@@ -148,3 +148,7 @@ To ship something that is not ready to be the default, add it to
 when Beta mode is switched on, under the version number. Change its stage to
 `"stable"` and push, and it becomes normal for everyone on the next update.
 
+## Licence
+
+MIT — see [LICENSE](LICENSE). Use it, change it, run it in your own building.
+No warranty of any kind.
