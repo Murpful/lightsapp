@@ -210,6 +210,9 @@
   </div>
 
   <!-- ------------------------------------------------------------ help -->
+  <button id="btnUpdates" class="help-fab updates-fab"
+          title="Version, updates and testing mode">
+    <span class="fab-dot" id="updatesDot" hidden></span>Updates</button>
   <button id="btnRequest" class="help-fab request-fab"
           title="Ask for a change or report something odd">Request</button>
   <button id="btnHelp" class="help-fab" title="Who to contact">Help</button>
@@ -329,7 +332,13 @@
           <span class="help-label">Mobile</span>
           <span class="help-value">580&#8209;747&#8209;4678</span>
         </a>
+        <button class="help-row help-action" id="helpReport" type="button">
+          <span class="help-label">Not urgent</span>
+          <span class="help-value">Submit an issue &rarr;</span>
+        </button>
       </div>
+      <p class="modal-note">An issue goes straight through to the app's
+        maintainer. Use the phone number if the lights are down right now.</p>
     </div>
   </div>
 

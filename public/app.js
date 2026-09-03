@@ -786,6 +786,11 @@ async function checkForUpdate({ silent = false } = {}) {
   $('btnVersion').textContent = `v${UPDATE.current?.version ?? '?'}`;
   applyTestingMode();
 
+  // The corner button carries the news even after the banner is dismissed, so
+  // an update is never lost just because someone pressed Later.
+  $('btnUpdates').classList.toggle('available', Boolean(UPDATE.updateAvailable));
+  $('updatesDot').hidden = !UPDATE.updateAvailable;
+
   const bar = $('updateBar');
   // `silent` is for checks the operator asked for from the About panel, which
   // reports there instead of also throwing a banner over the page.
@@ -841,12 +846,15 @@ function renderAbout() {
 
 const closeAbout = () => $('aboutPanel').classList.add('hidden');
 
-$('btnVersion').addEventListener('click', async () => {
+async function openAbout() {
   $('aboutPanel').classList.remove('hidden');
   renderAbout();
   await checkForUpdate({ silent: true });  // refresh the moment it is opened
   renderAbout();
-});
+}
+
+$('btnVersion').addEventListener('click', openAbout);
+$('btnUpdates').addEventListener('click', openAbout);
 $('aboutClose').addEventListener('click', closeAbout);
 $('aboutPanel').addEventListener('click', (e) => { if (e.target.id === 'aboutPanel') closeAbout(); });
 
@@ -952,10 +960,20 @@ async function waitForServer(timeoutMs = 60000) {
 
 const closeRequest = () => $('requestPanel').classList.add('hidden');
 
-$('btnRequest').addEventListener('click', () => {
+/**
+ * Opens the request form.
+ *
+ * @param kind preselects what sort of request it is. Coming from Help, someone
+ *             is reporting a problem rather than asking for a feature, and
+ *             having to set that themselves is a step they should not need.
+ */
+function openRequest(kind = null) {
+  if (kind) $('reqKind').value = kind;
   $('requestPanel').classList.remove('hidden');
   $('reqBody').focus();
-});
+}
+
+$('btnRequest').addEventListener('click', () => openRequest());
 $('reqClose').addEventListener('click', closeRequest);
 $('requestPanel').addEventListener('click', (e) => { if (e.target.id === 'requestPanel') closeRequest(); });
 
@@ -993,6 +1011,13 @@ $('reqSend').addEventListener('click', async () => {
 
 const closeHelp = () => $('helpPanel').classList.add('hidden');
 $('btnHelp').addEventListener('click', () => $('helpPanel').classList.remove('hidden'));
+
+// Reporting a problem is the same journey as any other request, so it reuses
+// the one form rather than being a second thing that can drift out of step.
+$('helpReport').addEventListener('click', () => {
+  closeHelp();
+  openRequest('Something is broken');
+});
 $('helpClose').addEventListener('click', closeHelp);
 $('helpPanel').addEventListener('click', (e) => { if (e.target.id === 'helpPanel') closeHelp(); });
 

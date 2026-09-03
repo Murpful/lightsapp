@@ -386,6 +386,16 @@ body.testing-mode .version-tag { border-color: var(--warn); color: var(--warn); 
 
 .request-fab { right: 78px; }
 
+/* Bottom LEFT, away from Help and Request: updating is a different kind of
+   action from asking for help, and it should not be buried in the version. */
+.updates-fab { left: 16px; right: auto; display: flex; align-items: center; gap: 7px; }
+.updates-fab.available { color: var(--text); border-color: var(--accent); }
+.fab-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+}
+body.testing-mode .updates-fab { border-color: var(--warn); color: var(--warn); }
+
 .req-card { width: min(520px, 94vw); }
 .req-body {
   width: 100%;
