@@ -11,6 +11,7 @@
 //    strictly read-only.
 
 import http from 'node:http';
+import https from 'node:https';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as wled from './lib/wled.js';
@@ -34,6 +35,66 @@ const REPO = { owner: 'Murpful', repo: 'lightsapp', branch: 'main' };
 
 /** Where a feature request is sent, since the booth has no GitHub account. */
 const MAINTAINER_EMAIL = 'murpful@gmail.com';
+
+/**
+ * Sends a request to a Discord channel.
+ *
+ * Chosen over a GitHub token because the credential is weaker in the right way:
+ * a webhook URL can only post messages into the one channel it belongs to, and
+ * is regenerated in two clicks if it ever leaks. It also needs no account at
+ * this end, which matters -- whoever runs the lights next will not have one.
+ *
+ * The URL is a secret. It lives in data/ (gitignored), is never sent to the
+ * browser, and is kept out of error messages.
+ */
+function postToDiscord(webhook, { kind, detail, version }) {
+  return new Promise((resolve, reject) => {
+    let url;
+    try {
+      url = new URL(webhook);
+    } catch {
+      return reject(new Error('the webhook address is not a valid URL'));
+    }
+    if (!/(^|\.)discord(app)?\.com$/.test(url.hostname)) {
+      return reject(new Error('that is not a Discord webhook address'));
+    }
+
+    const payload = JSON.stringify({
+      username: 'LightsApp',
+      embeds: [{
+        title: kind,
+        // Discord rejects an embed description over 4096 characters.
+        description: detail.slice(0, 3800),
+        color: 0x4c8dff,
+        footer: { text: `LightsApp ${version} · from the booth` },
+        timestamp: new Date().toISOString(),
+      }],
+    });
+
+    const req = https.request({
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        'User-Agent': 'LightsApp',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+      timeout: 20000,
+    }, (res) => {
+      res.resume();
+      res.on('end', () => {
+        // 204 is the success case for a webhook; 200 if it was asked to wait.
+        if (res.statusCode === 204 || res.statusCode === 200) return resolve(true);
+        // Never echo the response: it can quote the URL back, secret and all.
+        reject(new Error(`Discord replied ${res.statusCode}`));
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('timed out')));
+    req.on('error', () => reject(new Error('could not reach Discord')));
+    req.end(payload);
+  });
+}
 
 /** Feature flags shipped with the code, not operator data, so read from root. */
 const readFeatures = async () => {
@@ -1514,6 +1575,99 @@ async function handleApi(req, res, url) {
     } catch (e) {
       return json(res, 500, { error: e.message });
     }
+  }
+
+  /**
+   * Files a request from whoever is running the lights.
+   *
+   * Saved locally FIRST, always. The booth is often offline and the webhook may
+   * be missing or revoked, and a request that vanishes because of either would
+   * be worse than useless -- so the local record is the source of truth and
+   * Discord is a bonus on top of it.
+   */
+  if (method === 'POST' && p === '/api/request') {
+    const { kind, detail } = await readBody(req);
+    const text = String(detail ?? '').trim();
+    if (!text) return json(res, 400, { error: 'say what you need first' });
+
+    const version = (await updater.localVersion()).version;
+    const entry = {
+      id: `req-${Date.now().toString(36)}`,
+      at: new Date().toISOString(),
+      kind: String(kind ?? 'Request'),
+      detail: text,
+      version,
+      posted: null,
+    };
+
+    const log = await store.load('requests', null) ?? [];
+    log.unshift(entry);
+    await store.save('requests', log);
+
+    const cfg = await store.load('notify', null);
+    if (!cfg?.discordWebhook) {
+      return json(res, 200, {
+        ok: true, saved: true, sent: false,
+        note: 'Saved here, but no Discord channel is set up yet.',
+      });
+    }
+
+    try {
+      await postToDiscord(cfg.discordWebhook, { kind: entry.kind, detail: text, version });
+      entry.posted = new Date().toISOString();
+      await store.save('requests', log);
+      return json(res, 200, { ok: true, saved: true, sent: true });
+    } catch (e) {
+      // The local copy already exists, so nothing is lost. Say so plainly.
+      return json(res, 200, {
+        ok: true, saved: true, sent: false,
+        note: `Saved here, but it could not be sent (${e.message}).`,
+      });
+    }
+  }
+
+  /**
+   * Whether a Discord channel is configured, and setting one up.
+   *
+   * The URL itself is never returned -- only whether one exists -- so the
+   * secret cannot be read back out of the app by anyone using it.
+   */
+  if (method === 'GET' && p === '/api/notify') {
+    const cfg = await store.load('notify', null);
+    return json(res, 200, { configured: Boolean(cfg?.discordWebhook) });
+  }
+  if (method === 'POST' && p === '/api/notify') {
+    const { discordWebhook, test } = await readBody(req);
+    const cfg = await store.load('notify', null) ?? {};
+
+    if (typeof discordWebhook === 'string') {
+      const url = discordWebhook.trim();
+      if (url && !/^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\//.test(url)) {
+        return json(res, 400, { error: 'that does not look like a Discord webhook URL' });
+      }
+      if (url) cfg.discordWebhook = url; else delete cfg.discordWebhook;
+      await store.save('notify', cfg);
+    }
+
+    if (test) {
+      if (!cfg.discordWebhook) return json(res, 400, { error: 'no channel set up yet' });
+      try {
+        await postToDiscord(cfg.discordWebhook, {
+          kind: 'Test message',
+          detail: 'If you can read this, requests from the booth will reach you here.',
+          version: (await updater.localVersion()).version,
+        });
+        return json(res, 200, { configured: true, tested: true });
+      } catch (e) {
+        return json(res, 502, { configured: true, tested: false, error: e.message });
+      }
+    }
+    return json(res, 200, { configured: Boolean(cfg.discordWebhook) });
+  }
+
+  /** Requests filed from this machine, newest first. */
+  if (method === 'GET' && p === '/api/requests') {
+    return json(res, 200, await store.load('requests', null) ?? []);
   }
 
   if (method === 'POST' && p === '/api/refresh') {

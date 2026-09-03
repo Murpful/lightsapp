@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.1.0",
   "released": "2026-09-03",
-  "notes": "Self-update from GitHub, feature flags for testing mode, and a Request button. The song library is never touched by an update."
+  "notes": "Version shown in the header, with updates and testing mode behind it. Requests go to Discord. Song archive."
 }

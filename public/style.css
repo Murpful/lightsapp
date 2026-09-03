@@ -307,6 +307,58 @@ html, body {
 .mini.pin.on { color: var(--warn); }
 .mini.pin:hover { color: var(--warn); border-color: var(--accent-dim); }
 
+/* --------------------------------------------------------- version / about */
+
+/* Quiet enough to ignore, but always there -- it is the first thing anyone is
+   asked for when something goes wrong. */
+.version-tag {
+  padding: 2px 7px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.version-tag:hover { color: var(--text); border-color: var(--accent-dim); }
+
+.about-card { width: min(480px, 94vw); }
+.about-ver { color: var(--dim); font-weight: 400; font-size: 13px; }
+.about-row {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 14px 10px;
+  padding: 11px 13px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.about-row.hidden { display: none; }
+.about-main { flex: 1; min-width: 0; }
+.about-main strong { display: block; font-size: 13px; font-weight: 600; }
+.about-sub { display: block; margin-top: 2px; font-size: 11.5px; color: var(--dim); line-height: 1.4; }
+
+/* Switch, rather than a checkbox: this one is a mode, not a setting in a list. */
+.switch { position: relative; flex: none; width: 38px; height: 22px; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch span {
+  position: absolute; inset: 0;
+  background: var(--line); border-radius: 999px;
+  transition: background .15s ease;
+}
+.switch span::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--dim);
+  transition: transform .15s ease, background .15s ease;
+}
+.switch input:checked + span { background: var(--accent-dim); }
+.switch input:checked + span::after { transform: translateX(16px); background: #fff; }
+.switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* A visible reminder that this machine is not in its normal state. */
+body.testing-mode .version-tag { border-color: var(--warn); color: var(--warn); }
+
 /* ------------------------------------------------------------- update bar */
 
 /* Sits along the bottom rather than over the controls: an update is never

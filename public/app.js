@@ -775,14 +775,21 @@ $('blList').addEventListener('click', (e) => {
  */
 let UPDATE = null;
 
-async function checkForUpdate() {
+async function checkForUpdate({ silent = false } = {}) {
+  const wasDismissed = UPDATE?.dismissed;
   try {
     UPDATE = await api('/api/update/status');
   } catch {
     return; // offline, or the server is mid-restart. Say nothing.
   }
+  UPDATE.dismissed = wasDismissed;
+  $('btnVersion').textContent = `v${UPDATE.current?.version ?? '?'}`;
+  applyTestingMode();
+
   const bar = $('updateBar');
-  if (!UPDATE.updateAvailable || UPDATE.dismissed) return bar.classList.add('hidden');
+  // `silent` is for checks the operator asked for from the About panel, which
+  // reports there instead of also throwing a banner over the page.
+  if (silent || !UPDATE.updateAvailable || UPDATE.dismissed) return bar.classList.add('hidden');
 
   $('updateTitle').textContent = `Version ${UPDATE.remote.version} is available`;
   // The lights being on is the usual reason this cannot run, and saying so is
@@ -794,6 +801,111 @@ async function checkForUpdate() {
   bar.classList.toggle('blocked', blocked);
   $('updateApply').disabled = blocked;
   bar.classList.remove('hidden');
+}
+
+/* ------------------------------------------------------------ about panel */
+
+/**
+ * Version, updates and testing mode, behind the version number in the header.
+ *
+ * Everything the operator can do about updates lives here rather than being
+ * spread around: what is running, check now, install, undo, and the testing
+ * switch. Out of the way, but never more than one click from the version they
+ * would be asked for over the phone.
+ */
+function renderAbout() {
+  if (!UPDATE) return;
+  const cur = UPDATE.current ?? {};
+  $('btnVersion').textContent = `v${cur.version ?? '?'}`;
+  $('aboutVersion').textContent = `v${cur.version ?? '?'}`;
+  $('aboutNotes').textContent = cur.notes ?? '';
+
+  const up = UPDATE.updateAvailable;
+  $('aboutUpdateTitle').textContent = up ? `Version ${UPDATE.remote.version} is available` : 'Updates';
+  $('aboutUpdateSub').textContent = !UPDATE.reachable
+    ? 'Could not reach the internet, so there is nothing to check against.'
+    : up
+      ? (UPDATE.safeToApply ? (UPDATE.remote.notes ?? '') : 'The lights are on — blackout first.')
+      : 'This is the latest version.';
+  $('aboutUpdate').classList.toggle('hidden', !up);
+  $('aboutUpdate').disabled = !UPDATE.safeToApply;
+
+  $('aboutTesting').checked = Boolean(UPDATE.testingMode);
+
+  const backups = UPDATE.backups ?? [];
+  $('aboutRollbackRow').classList.toggle('hidden', !backups.length);
+  if (backups.length) {
+    $('aboutRollbackSub').textContent = `Puts version ${backups[0].version} back.`;
+  }
+}
+
+const closeAbout = () => $('aboutPanel').classList.add('hidden');
+
+$('btnVersion').addEventListener('click', async () => {
+  $('aboutPanel').classList.remove('hidden');
+  renderAbout();
+  await checkForUpdate({ silent: true });  // refresh the moment it is opened
+  renderAbout();
+});
+$('aboutClose').addEventListener('click', closeAbout);
+$('aboutPanel').addEventListener('click', (e) => { if (e.target.id === 'aboutPanel') closeAbout(); });
+
+$('aboutCheck').addEventListener('click', async () => {
+  const btn = $('aboutCheck');
+  btn.disabled = true;
+  $('aboutUpdateSub').textContent = 'Checking…';
+  await checkForUpdate({ silent: true });
+  renderAbout();
+  btn.disabled = false;
+});
+
+$('aboutTesting').addEventListener('change', async (e) => {
+  const on = e.target.checked;
+  try {
+    await api('/api/update/settings', { method: 'POST', body: JSON.stringify({ testingMode: on }) });
+    if (UPDATE) UPDATE.testingMode = on;
+    applyTestingMode();
+    toast(on
+      ? 'Testing mode on — features still being tried out are now visible'
+      : 'Testing mode off');
+  } catch (err) {
+    e.target.checked = !on;
+    toast(err.message, true);
+  }
+});
+
+$('aboutUpdate').addEventListener('click', () => { closeAbout(); $('updateApply').click(); });
+
+$('aboutRollback').addEventListener('click', async () => {
+  if (!confirm('Put the previous version back?\n\nYour songs, queue and settings are not affected.')) return;
+  const btn = $('aboutRollback');
+  btn.disabled = true;
+  $('aboutRollbackSub').textContent = 'Rolling back and restarting…';
+  try {
+    await api('/api/update/undo', { method: 'POST', body: '{}' });
+    await waitForServer();
+    location.reload();
+  } catch (e) {
+    toast(e.message, true);
+    btn.disabled = false;
+  }
+});
+
+/**
+ * Shows or hides anything still marked "testing".
+ *
+ * A feature ships to the booth dormant and only appears once someone turns
+ * testing mode on, so a half-finished idea can be delivered without changing
+ * how the lights are run day to day.
+ */
+function applyTestingMode() {
+  const on = Boolean(UPDATE?.testingMode);
+  const flags = UPDATE?.features?.features ?? {};
+  document.body.classList.toggle('testing-mode', on);
+  document.querySelectorAll('[data-feature]').forEach((el) => {
+    const stage = flags[el.dataset.feature]?.stage ?? 'stable';
+    el.classList.toggle('hidden', stage === 'testing' && !on);
+  });
 }
 
 $('updateLater').addEventListener('click', () => {
@@ -848,31 +960,33 @@ $('reqClose').addEventListener('click', closeRequest);
 $('requestPanel').addEventListener('click', (e) => { if (e.target.id === 'requestPanel') closeRequest(); });
 
 /**
- * Hands the request to the operator's mail program, pre-filled.
+ * Files the request through the server.
  *
- * No account, no login and no credentials on this machine -- and nothing is
- * sent until they press send themselves. The version goes in the body because
- * the first useful question about any report is which version produced it.
+ * The operator needs no account and no login: the server holds the Discord
+ * webhook and does the sending. It is written to disk here before any network
+ * call, so a request is never lost to being offline.
  */
-$('reqSend').addEventListener('click', () => {
-  const kind = $('reqKind').value;
+$('reqSend').addEventListener('click', async () => {
   const detail = $('reqBody').value.trim();
   if (!detail) return toast('Describe what you need first', true);
 
-  const version = UPDATE?.current?.version ?? 'unknown';
-  const body = [
-    detail, '', '---',
-    `Type: ${kind}`,
-    `LightsApp version: ${version}`,
-    `Sent: ${new Date().toLocaleString()}`,
-  ].join('\n');
-
-  const href = `mailto:${encodeURIComponent(S.maintainer ?? '')}`
-    + `?subject=${encodeURIComponent(`LightsApp: ${kind}`)}`
-    + `&body=${encodeURIComponent(body)}`;
-  window.location.href = href;
-  closeRequest();
-  toast('Opening your email — nothing is sent until you press send');
+  const btn = $('reqSend');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const r = await api('/api/request', {
+      method: 'POST',
+      body: JSON.stringify({ kind: $('reqKind').value, detail }),
+    });
+    $('reqBody').value = '';
+    closeRequest();
+    toast(r.sent ? 'Sent — thank you' : (r.note ?? 'Saved on this machine'), !r.sent);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  }
 });
 
 /* -------------------------------------------------------------------- help */
@@ -1154,11 +1268,13 @@ const anyModalOpen = () =>
   !$('stage').classList.contains('hidden') ||
   !$('hiddenPanel').classList.contains('hidden') ||
   !$('requestPanel').classList.contains('hidden') ||
+  !$('aboutPanel').classList.contains('hidden') ||
   !$('helpPanel').classList.contains('hidden');
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     if (colorPopOpen()) return closeColorPop();
+    if (!$('aboutPanel').classList.contains('hidden')) return closeAbout();
     if (!$('requestPanel').classList.contains('hidden')) return closeRequest();
     if (!$('hiddenPanel').classList.contains('hidden')) return closeHidden();
     if (!$('helpPanel').classList.contains('hidden')) return closeHelp();

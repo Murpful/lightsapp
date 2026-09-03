@@ -11,6 +11,7 @@
     <div class="brand">
       <span class="logo"></span>
       <h1>LightsApp</h1>
+      <button id="btnVersion" class="version-tag" title="Version, updates and testing mode">v&hellip;</button>
     </div>
     <div class="bar-status" id="devStrip"></div>
     <div class="bar-actions">
@@ -224,6 +225,44 @@
     <button id="updateLater" class="btn ghost tiny">Later</button>
   </div>
 
+  <!-- ---------------------------------------------------- version / about -->
+  <div id="aboutPanel" class="modal hidden">
+    <div class="modal-card about-card">
+      <div class="modal-head">
+        <h3>LightsApp <span id="aboutVersion" class="about-ver"></span></h3>
+        <button id="aboutClose" class="btn ghost tiny">&#10005;</button>
+      </div>
+
+      <p class="modal-note" id="aboutNotes"></p>
+
+      <div class="about-row">
+        <div class="about-main">
+          <strong id="aboutUpdateTitle">Updates</strong>
+          <span id="aboutUpdateSub" class="about-sub">Checking&hellip;</span>
+        </div>
+        <button id="aboutCheck" class="btn ghost tiny">Check now</button>
+        <button id="aboutUpdate" class="btn primary tiny hidden">Update</button>
+      </div>
+
+      <div class="about-row">
+        <div class="about-main">
+          <strong>Testing mode</strong>
+          <span class="about-sub">Shows features that are still being tried out.
+            Leave this off for normal use.</span>
+        </div>
+        <label class="switch"><input type="checkbox" id="aboutTesting" /><span></span></label>
+      </div>
+
+      <div class="about-row hidden" id="aboutRollbackRow">
+        <div class="about-main">
+          <strong>Undo the last update</strong>
+          <span class="about-sub" id="aboutRollbackSub"></span>
+        </div>
+        <button id="aboutRollback" class="btn danger tiny">Undo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- --------------------------------------------------- feature request -->
   <div id="requestPanel" class="modal hidden">
     <div class="modal-card req-card">
@@ -232,8 +271,7 @@
         <button id="reqClose" class="btn ghost tiny">&#10005;</button>
       </div>
       <p class="modal-note">Describe what you would like the app to do, or what
-        went wrong. This opens an email &mdash; nothing is sent until you press
-        send in your mail program.</p>
+        went wrong. It goes straight to whoever looks after this app.</p>
       <label class="ctl"><span>What kind?</span>
         <select id="reqKind">
           <option value="A new feature">A new feature</option>
@@ -245,7 +283,7 @@
           placeholder="What would you like it to do? If something went wrong, what were you doing at the time?"></textarea></label>
       <div class="modal-foot">
         <span class="spacer"></span>
-        <button id="reqSend" class="btn primary">Open email</button>
+        <button id="reqSend" class="btn primary">Send</button>
       </div>
     </div>
   </div>
