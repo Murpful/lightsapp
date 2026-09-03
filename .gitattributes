@@ -1,0 +1,11 @@
+# Normalise line endings in the repo, but keep CRLF in the working copy for the
+# Windows launchers -- cmd.exe and wscript both misbehave on LF-only files, and
+# these are what start the app at sign-in.
+* text=auto
+
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary

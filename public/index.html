@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LightsApp</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="logo"></span>
+      <h1>LightsApp</h1>
+    </div>
+    <div class="bar-status" id="devStrip"></div>
+    <div class="bar-actions">
+      <button id="btnRefresh" class="btn ghost" title="Re-read presets from every controller">Refresh</button>
+      <button id="btnBlackout" class="btn danger" title="Turn all six controllers off">Blackout</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- ------------------------------------------------ scene library -->
+    <section class="panel" id="libraryPanel">
+      <div class="panel-head">
+        <h2>Songs</h2>
+        <div class="head-actions">
+          <span class="count" id="sceneCount">0</span>
+          <button id="btnAutoSong" class="btn tiny" title="Generate a song from a colour palette">+ Auto</button>
+          <button id="btnNewSong" class="btn tiny primary" title="Design a new song on the simulated stage">+ New</button>
+        </div>
+      </div>
+      <input id="search" class="search" type="search" placeholder="Search songs..." autocomplete="off" />
+      <div class="sortbar">
+        <span>Sort</span>
+        <button class="sortbtn active" data-sort="name">A&ndash;Z</button>
+        <button class="sortbtn" data-sort="date">Newest</button>
+      </div>
+      <div class="list" id="sceneList"></div>
+    </section>
+
+    <!-- --------------------------------------------------------- queue -->
+    <section class="panel" id="queuePanel">
+      <div class="panel-head">
+        <h2>Queue</h2>
+        <button id="btnRestart" class="btn tiny ghost"
+                title="Lights off and back to the start — the queue itself is kept">Start over</button>
+        <button id="btnClear" class="btn tiny ghost">Clear</button>
+      </div>
+
+      <div class="now">
+        <div class="now-label">NOW</div>
+        <div class="now-name" id="nowName">&mdash;</div>
+        <div class="now-label next">UP NEXT</div>
+        <div class="now-next" id="nextName">&mdash;</div>
+      </div>
+
+      <div class="transport">
+        <button id="btnPrev" class="btn ghost">&larr; Back</button>
+        <button id="btnNext" class="btn primary big">NEXT &rarr;</button>
+      </div>
+      <p class="hint">Space or &rarr; to advance &middot; drag blocks to reorder</p>
+
+      <div class="list queue-list" id="queueList"></div>
+    </section>
+
+    <!-- ------------------------------------------------------- devices -->
+    <section class="panel" id="devicePanel">
+      <div class="panel-head">
+        <h2>Controllers</h2>
+        <span class="count" id="onlineCount">&mdash;</span>
+      </div>
+      <div class="devices" id="deviceCards"></div>
+    </section>
+  </main>
+
+  <!-- --------------------------------------------------- stage view -->
+  <div id="stage" class="stage-view hidden">
+    <div class="stage-bar">
+      <button id="stClose" class="btn ghost tiny">&larr; Back</button>
+      <h2 id="stTitle">Stage</h2>
+      <span class="spacer"></span>
+      <span id="stMode" class="st-mode">simulated</span>
+      <label class="live-toggle" title="Push changes to the real controllers and preview their actual output">
+        <input type="checkbox" id="stLive" /> <span>Go live</span>
+      </label>
+      <input id="stName" class="st-name" placeholder="Song name" />
+      <button id="stSave" class="btn primary tiny">Create song</button>
+    </div>
+
+    <div class="stage-body">
+      <div class="stage-canvas-wrap">
+        <div class="sim-notice" id="simNotice">
+          <strong>Effect simulation is off.</strong>
+          This shows which fixtures are on and roughly what colour &mdash; not how
+          the effect actually moves. Use <em>Go live</em> and watch the room for that.
+        </div>
+        <canvas id="stCanvas"></canvas>
+        <div class="stage-legend">
+          <span>Congregation view &mdash; click a fixture to design it</span>
+          <span id="stInfo"></span>
+          <span id="stFps"></span>
+        </div>
+      </div>
+
+      <aside class="stage-controls">
+        <!-- ------------------------------------------- auto generator -->
+        <div id="autoPanel" class="auto-panel hidden">
+          <div class="warn-box">
+            <strong>Experimental.</strong> Auto picks effects and settings at
+            random within your palette. Results are unpredictable &mdash; always
+            look at the preview, and try it on the rig before a service rather
+            than during one.
+          </div>
+          <div class="group-label">Generate from a palette</div>
+          <p class="modal-note">Pick the colours the song should live in and roughly
+            how fast it moves. Generate builds a look for every fixture; keep
+            hitting it until one fits, then tweak any fixture by hand.</p>
+
+          <div class="pal-strip" id="autoSwatches"></div>
+          <div class="pal-roles">
+            <span class="role-label">Role</span>
+            <button class="rolebtn" data-role="primary">Primary</button>
+            <button class="rolebtn" data-role="secondary">Secondary</button>
+            <button class="rolebtn" data-role="accent">Accent</button>
+          </div>
+          <p class="modal-note">Primary is what the song mostly sits in, secondary
+            supports it, accent is the occasional tinge. Add as many of each as
+            you like &mdash; the role only shifts how often a colour gets used.</p>
+          <div class="pal-actions">
+            <button id="autoAddCol" class="btn tiny">+ Colour</button>
+            <button id="autoDelCol" class="btn tiny ghost">Remove</button>
+          </div>
+
+          <label class="ctl"><span>Song speed <b id="vTempo"></b></span>
+            <input type="range" id="autoTempo" min="0" max="100" value="45" /></label>
+          <label class="ctl"><span>Energy <b id="vEnergy"></b></span>
+            <input type="range" id="autoEnergy" min="0" max="100" value="50" /></label>
+          <label class="ctl-check"><input type="checkbox" id="autoMeasuredOnly" />
+            Only effects measured on the rig (safer, less variety)</label>
+
+          <p class="modal-note" id="autoScope">Rolling every fixture. Click one to reroll just that.</p>
+          <button id="autoGenerate" class="btn primary" style="width:100%">Generate all</button>
+          <p class="modal-note" id="autoSummary"></p>
+        </div>
+
+        <div class="sel-head">
+          <div class="sel-name" id="selName">Cross</div>
+          <div class="sel-sub" id="selSub"></div>
+        </div>
+
+        <label class="power-row">
+          <input type="checkbox" id="ctlOn" />
+          <span>Powered on</span>
+        </label>
+
+        <label class="ctl" id="rowPreset">
+          <span>Start from an existing preset</span>
+          <select id="ctlPreset"></select>
+        </label>
+
+        <label class="ctl" id="rowFx">
+          <span>Effect</span>
+          <select id="ctlFx"></select>
+        </label>
+        <label class="ctl" id="rowPal">
+          <span>Palette</span>
+          <select id="ctlPal"></select>
+        </label>
+
+        <div class="ctl-colors" id="rowColors">
+          <div class="slot-tabs">
+            <button class="slot" id="rowCol0" data-slot="0"><i></i><span>1</span></button>
+            <button class="slot" id="rowCol1" data-slot="1"><i></i><span>2</span></button>
+            <button class="slot" id="rowCol2" data-slot="2"><i></i><span>3</span></button>
+          </div>
+          <p class="modal-note">Click a colour to change it.</p>
+        </div>
+
+        <label class="ctl" id="rowBri"><span>Brightness <b id="vBri"></b></span>
+          <input type="range" id="ctlBri" min="0" max="255" /></label>
+        <label class="ctl" id="rowSx"><span>Speed <b id="vSx"></b></span>
+          <input type="range" id="ctlSx" min="0" max="255" /></label>
+        <label class="ctl" id="rowIx"><span>Intensity <b id="vIx"></b></span>
+          <input type="range" id="ctlIx" min="0" max="255" /></label>
+
+        <label class="ctl-check blacklist-row hidden" id="rowAllowBlacklisted">
+          <input type="checkbox" id="ctlAllowBlacklisted" />
+          <span>Allow blacklisted settings <b id="blCount"></b></span>
+        </label>
+
+        <button id="btnHidden" class="btn danger tiny bl-open" type="button"
+                title="Choose which effects and palettes appear in these menus">Edit hidden list</button>
+
+        <p class="modal-note" id="stNote"></p>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Colour picker, opened by clicking whichever swatch you want to change. -->
+  <div id="colorPop" class="color-pop hidden">
+    <canvas id="wheel" width="240" height="240"></canvas>
+    <label class="ctl"><span>Brightness <b id="vVal"></b></span>
+      <input type="range" id="ctlVal" min="0" max="255" /></label>
+    <div class="pop-foot">
+      <span class="hexline" id="hexOut">#ffffff</span>
+      <button id="colorPopDone" class="btn tiny primary">Done</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ help -->
+  <button id="btnHelp" class="help-fab" title="Who to contact">Help</button>
+
+  <!-- ------------------------------------------------- hidden effects -->
+  <div id="hiddenPanel" class="modal hidden">
+    <div class="modal-card bl-card">
+      <div class="modal-head">
+        <h3>Hidden from the pickers</h3>
+        <button id="blClose" class="btn ghost tiny">&#10005;</button>
+      </div>
+      <p class="modal-note">Anything hidden here stays out of the effect and palette
+        menus. It never changes a song that already uses it.</p>
+
+      <div class="bl-tabs">
+        <button class="bl-tab active" data-kind="effects">Effects</button>
+        <button class="bl-tab" data-kind="palettes">Palettes</button>
+      </div>
+
+      <div class="bl-controls">
+        <input id="blFilter" class="search" placeholder="Search&hellip;" />
+        <label class="ctl-check"><input type="checkbox" id="blOnlyHidden" /> Only hidden</label>
+      </div>
+
+      <div id="blList" class="bl-list"></div>
+      <p class="modal-note" id="blSummary"></p>
+    </div>
+  </div>
+
+  <div id="helpPanel" class="modal hidden">
+    <div class="modal-card help-card">
+      <div class="modal-head">
+        <h3>Need a hand?</h3>
+        <button id="helpClose" class="btn ghost tiny">&#10005;</button>
+      </div>
+      <p class="modal-note">Contact for anything to do with the lighting rig or this app.</p>
+      <div class="help-rows">
+        <a class="help-row" href="mailto:matthew@leprell.com">
+          <span class="help-label">Email</span>
+          <span class="help-value">matthew@leprell.com</span>
+        </a>
+        <a class="help-row" href="tel:5807474678">
+          <span class="help-label">Mobile</span>
+          <span class="help-value">580&#8209;747&#8209;4678</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,2359 @@
+{
+  "effects": [
+    "Solid",
+    "Blink",
+    "Breathe",
+    "Wipe",
+    "Wipe Random",
+    "Random Colors",
+    "Sweep",
+    "Dynamic",
+    "Colorloop",
+    "Rainbow",
+    "Scan",
+    "Scan Dual",
+    "Fade",
+    "Theater",
+    "Theater Rainbow",
+    "Running",
+    "Saw",
+    "Twinkle",
+    "Dissolve",
+    "Dissolve Rnd",
+    "Sparkle",
+    "Sparkle Dark",
+    "Sparkle+",
+    "Strobe",
+    "Strobe Rainbow",
+    "Strobe Mega",
+    "Blink Rainbow",
+    "Android",
+    "Chase",
+    "Chase Random",
+    "Chase Rainbow",
+    "Chase Flash",
+    "Chase Flash Rnd",
+    "Rainbow Runner",
+    "Colorful",
+    "Traffic Light",
+    "Sweep Random",
+    "Chase 2",
+    "Aurora",
+    "Stream",
+    "Scanner",
+    "Lighthouse",
+    "Fireworks",
+    "Rain",
+    "Tetrix",
+    "Fire Flicker",
+    "Gradient",
+    "Loading",
+    "Police",
+    "Fairy",
+    "Two Dots",
+    "Fairy Twinkle",
+    "Running Dual",
+    "Halloween",
+    "Tri Chase",
+    "Tri Wipe",
+    "Tri Fade",
+    "Lightning",
+    "ICU",
+    "Multi Comet",
+    "Scanner Dual",
+    "Stream 2",
+    "Oscillate",
+    "Pride 2015",
+    "Juggle",
+    "Palette",
+    "Fire 2012",
+    "Colorwaves",
+    "Bpm",
+    "Fill Noise",
+    "Noise 1",
+    "Noise 2",
+    "Noise 3",
+    "Noise 4",
+    "Colortwinkles",
+    "Lake",
+    "Meteor",
+    "Meteor Smooth",
+    "Railway",
+    "Ripple",
+    "Twinklefox",
+    "Twinklecat",
+    "Halloween Eyes",
+    "Solid Pattern",
+    "Solid Pattern Tri",
+    "Spots",
+    "Spots Fade",
+    "Glitter",
+    "Candle",
+    "Fireworks Starburst",
+    "Fireworks 1D",
+    "Bouncing Balls",
+    "Sinelon",
+    "Sinelon Dual",
+    "Sinelon Rainbow",
+    "Popcorn",
+    "Drip",
+    "Plasma",
+    "Percent",
+    "Ripple Rainbow",
+    "Heartbeat",
+    "Pacifica",
+    "Candle Multi",
+    "Solid Glitter",
+    "Sunrise",
+    "Phased",
+    "Twinkleup",
+    "Noise Pal",
+    "Sine",
+    "Phased Noise",
+    "Flow",
+    "Chunchun",
+    "Dancing Shadows",
+    "Washing Machine",
+    "Candy Cane",
+    "Blends",
+    "TV Simulator",
+    "Dynamic Smooth",
+    "Reserved0",
+    "Reserved1",
+    "Reserved2",
+    "Reserved3",
+    "Reserved4",
+    "Reserved5",
+    "Reserved6",
+    "Reserved7",
+    "Reserved8",
+    "Reserved9",
+    " ♪ Pixels",
+    " ♪ Pixelwave",
+    " ♪ Juggles",
+    " ♪ Matripix",
+    " ♪ Gravimeter",
+    " ♪ Plasmoid",
+    " ♪ Puddles",
+    " ♪ Midnoise",
+    " ♪ Noisemeter",
+    " ♫ Freqwave",
+    " ♫ Freqmatrix",
+    " ♫ 2D GEQ",
+    " ♫ Waterfall",
+    " ♫ Freqpixels",
+    " ♫ Binmap",
+    " ♪ Noisefire",
+    " ♪ Puddlepeak",
+    " ♫ Noisemove",
+    "2D Noise",
+    "Perlin Move",
+    " ♪ Ripple Peak",
+    "2D FireNoise",
+    "2D Squared Swirl",
+    "2D Fire2012",
+    "2D DNA",
+    "2D Matrix",
+    "2D Metaballs",
+    " ♫ Freqmap",
+    " ♪ Gravcenter",
+    " ♪ Gravcentric",
+    " ♫ Gravfreq",
+    " ♫ DJ Light",
+    " ♫ 2D Funky Plank",
+    " ♫ 2D CenterBars",
+    "2D Pulser",
+    " ♫ Blurz",
+    "2D Drift",
+    " ♪ 2D Waverly",
+    "2D Sun Radiation",
+    "2D Colored Bursts",
+    "2D Julia",
+    "Reserved for PoolNoise",
+    "Reserved for Twister",
+    "Reserved for Elementary",
+    "2D Game Of Life",
+    "2D Tartan",
+    "2D Polar Lights",
+    " ♪ 2D Swirl",
+    "2D Lissajous",
+    "2D Frizzles",
+    "2D Plasma Ball",
+    "Flow Stripe",
+    "2D Hiphotic",
+    "2D Sindots",
+    "2D DNA Spiral",
+    "2D Black Hole",
+    "Wavesins",
+    " ♫ Rocktaves",
+    " ♫ 2D Akemi",
+    " ⚙️ Custom Effect",
+    "3D Ripples",
+    "3D Sphere Move"
+  ],
+  "fxCaps": [
+    {
+      "name": "Solid",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Blink",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Breathe",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Wipe",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Wipe Random",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Random Colors",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sweep",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Dynamic",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Colorloop",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Rainbow",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Scan",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Scan Dual",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fade",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Theater",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Theater Rainbow",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Running",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Saw",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Twinkle",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Dissolve",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Dissolve Rnd",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sparkle",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sparkle Dark",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sparkle+",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Strobe",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Strobe Rainbow",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Strobe Mega",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Blink Rainbow",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Android",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Chase",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Chase Random",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Chase Rainbow",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Chase Flash",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Chase Flash Rnd",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Rainbow Runner",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Colorful",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Traffic Light",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sweep Random",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Chase 2",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Aurora",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Stream",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Scanner",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Lighthouse",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Fireworks",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Rain",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Tetrix",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fire Flicker",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Gradient",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Loading",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Police",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fairy",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Two Dots",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fairy Twinkle",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Running Dual",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Halloween",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Tri Chase",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Tri Wipe",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Tri Fade",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Lightning",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "ICU",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Multi Comet",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Scanner Dual",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Stream 2",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Oscillate",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Pride 2015",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Juggle",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Palette",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fire 2012",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Colorwaves",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Bpm",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fill Noise",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Noise 1",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Noise 2",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Noise 3",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Noise 4",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Colortwinkles",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Lake",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Meteor",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Meteor Smooth",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Railway",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Ripple",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Twinklefox",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Twinklecat",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Halloween Eyes",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Solid Pattern",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Solid Pattern Tri",
+      "speed": false,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Spots",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Spots Fade",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Glitter",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Candle",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Fireworks Starburst",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Fireworks 1D",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Bouncing Balls",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sinelon",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Sinelon Dual",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Sinelon Rainbow",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Popcorn",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Drip",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Plasma",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "Percent",
+      "speed": false,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Ripple Rainbow",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Heartbeat",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Pacifica",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Candle Multi",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Solid Glitter",
+      "speed": false,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Sunrise",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Phased",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Twinkleup",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Noise Pal",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Sine",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Phased Noise",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Flow",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Chunchun",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Dancing Shadows",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Washing Machine",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Candy Cane",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Blends",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": false
+    },
+    {
+      "name": "TV Simulator",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Dynamic Smooth",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved0",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved1",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved2",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved3",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved4",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved5",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved6",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved7",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved8",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved9",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♪ Pixels",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Pixelwave",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Juggles",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Matripix",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Gravimeter",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Plasmoid",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Puddles",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Midnoise",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Noisemeter",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Freqwave",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ Freqmatrix",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ 2D GEQ",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Waterfall",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Freqpixels",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ Binmap",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Noisefire",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♪ Puddlepeak",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Noisemove",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Noise",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Perlin Move",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Ripple Peak",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D FireNoise",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D Squared Swirl",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Fire2012",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D DNA",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Matrix",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D Metaballs",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ Freqmap",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Gravcenter",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ Gravcentric",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Gravfreq",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ DJ Light",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ 2D Funky Plank",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♫ 2D CenterBars",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Pulser",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Blurz",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Drift",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♪ 2D Waverly",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Sun Radiation",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D Colored Bursts",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Julia",
+      "speed": false,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Reserved for PoolNoise",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved for Twister",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Reserved for Elementary",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D Game Of Life",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Tartan",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Polar Lights",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": " ♪ 2D Swirl",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Lissajous",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Frizzles",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Plasma Ball",
+      "speed": true,
+      "intensity": false,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "Flow Stripe",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "2D Hiphotic",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Sindots",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D DNA Spiral",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "2D Black Hole",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": false
+    },
+    {
+      "name": "Wavesins",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        false,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ Rocktaves",
+      "speed": false,
+      "intensity": false,
+      "colors": [
+        false,
+        true,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": " ♫ 2D Akemi",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        true,
+        true
+      ],
+      "palette": true
+    },
+    {
+      "name": " ⚙️ Custom Effect",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "3D Ripples",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    },
+    {
+      "name": "3D Sphere Move",
+      "speed": true,
+      "intensity": true,
+      "colors": [
+        true,
+        false,
+        false
+      ],
+      "palette": true
+    }
+  ],
+  "palettes": [
+    "Default",
+    "* Random Cycle",
+    "* Color 1",
+    "* Colors 1&2",
+    "* Color Gradient",
+    "* Colors Only",
+    "Party",
+    "Cloud",
+    "Lava",
+    "Ocean",
+    "Forest",
+    "Rainbow",
+    "Rainbow Bands",
+    "Sunset",
+    "Rivendell",
+    "Breeze",
+    "Red & Blue",
+    "Yellowout",
+    "Analogous",
+    "Splash",
+    "Pastel",
+    "Sunset 2",
+    "Beech",
+    "Vintage",
+    "Departure",
+    "Landscape",
+    "Beach",
+    "Sherbet",
+    "Hult",
+    "Hult 64",
+    "Drywet",
+    "Jul",
+    "Grintage",
+    "Rewhi",
+    "Tertiary",
+    "Fire",
+    "Icefire",
+    "Cyane",
+    "Light Pink",
+    "Autumn",
+    "Magenta",
+    "Magred",
+    "Yelmag",
+    "Yelblu",
+    "Orange & Teal",
+    "Tiamat",
+    "April Night",
+    "Orangery",
+    "C9",
+    "Sakura",
+    "Aurora",
+    "Atlantica",
+    "C9 2",
+    "C9 New",
+    "Temperature",
+    "Aurora 2",
+    "Retro Clown",
+    "Candy",
+    "Toxy Reaf",
+    "Fairy Reaf",
+    "Semi Blue",
+    "Pink Candy",
+    "Red Reaf",
+    "Aqua Flash",
+    "Yelblu Hot",
+    "Lite Light",
+    "Red Flash",
+    "Blink Red",
+    "Red Shift",
+    "Red Tide",
+    "Candy2"
+  ]
+}

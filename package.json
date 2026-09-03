@@ -1,0 +1,11 @@
+{
+  "name": "lightsapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Unified control surface for the sanctuary WLED lighting controllers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

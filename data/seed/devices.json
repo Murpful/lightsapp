@@ -1,0 +1,62 @@
+[
+  {
+    "id": "cross",
+    "name": "Cross",
+    "host": "192.168.0.226",
+    "mdns": "quinled.local",
+    "leds": 662,
+    "role": "cross",
+    "backupName": "QuinLED-cross",
+    "order": 1
+  },
+  {
+    "id": "drum",
+    "name": "Drums",
+    "host": "192.168.0.196",
+    "mdns": "srwled9.local",
+    "leds": 69,
+    "role": "drums",
+    "backupName": "Drum",
+    "order": 2
+  },
+  {
+    "id": "tubeR",
+    "name": "Tubes Right",
+    "host": "192.168.0.160",
+    "mdns": "right-tube.local",
+    "leds": 142,
+    "role": "framing",
+    "backupName": "Ltubes-right",
+    "order": 3
+  },
+  {
+    "id": "tubeL",
+    "name": "Tube Left",
+    "host": "192.168.0.194",
+    "mdns": null,
+    "leds": 71,
+    "role": "framing",
+    "backupName": "Ltube-left-btm",
+    "order": 4
+  },
+  {
+    "id": "trussR",
+    "name": "Right Truss",
+    "host": "192.168.0.190",
+    "mdns": null,
+    "leds": 78,
+    "role": "framing",
+    "backupName": "Right-Truss",
+    "order": 5
+  },
+  {
+    "id": "trussL",
+    "name": "Left Truss",
+    "host": "192.168.0.200",
+    "mdns": null,
+    "leds": 78,
+    "role": "framing",
+    "backupName": "Left-Truss",
+    "order": 6
+  }
+]

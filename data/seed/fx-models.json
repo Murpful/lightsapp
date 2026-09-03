@@ -1,0 +1,772 @@
+{
+ "0": {
+  "name": "Solid",
+  "archetype": "static",
+  "rate": {
+   "a": 0,
+   "b": 0,
+   "r2": 0
+  },
+  "wavelength": 0.25,
+  "lit": 1,
+  "duty": 0.992,
+  "drift": 0,
+  "spatial": 0,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0,
+    "spatial": 0,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 1,
+    "duty": 0.992
+   },
+   "128": {
+    "churn": 0,
+    "spatial": 0,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 1,
+    "duty": 0.992
+   },
+   "192": {
+    "churn": 0,
+    "spatial": 0,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 1,
+    "duty": 0.992
+   }
+  },
+  "rateScale": 1,
+  "ampScale": 2.071,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.08,
+   "dutyErr": 0.5
+  }
+ },
+ "2": {
+  "name": "Breathe",
+  "archetype": "pulse",
+  "rate": {
+   "a": 0.00013906,
+   "b": 0.0028,
+   "r2": 0.97
+  },
+  "wavelength": 0.042,
+  "lit": 0.592,
+  "duty": 0.236,
+  "drift": 0,
+  "spatial": 0.0202,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0126,
+    "spatial": 0.0242,
+    "uniformSwing": 0.2226,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.603,
+    "duty": 0.282
+   },
+   "128": {
+    "churn": 0.0188,
+    "spatial": 0.0202,
+    "uniformSwing": 0.304,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.592,
+    "duty": 0.236
+   },
+   "192": {
+    "churn": 0.0304,
+    "spatial": 0.0205,
+    "uniformSwing": 0.2796,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.6,
+    "duty": 0.239
+   }
+  },
+  "rateScale": 6.004,
+  "ampScale": 0.948,
+  "fitQuality": {
+   "churnErr": 0.01,
+   "litErr": 0.02,
+   "dutyErr": 0.41
+  }
+ },
+ "28": {
+  "name": "Chase",
+  "archetype": "noise",
+  "rate": {
+   "a": 0.00031953,
+   "b": 0.0413,
+   "r2": 0.979
+  },
+  "wavelength": 0.042,
+  "lit": 0.891,
+  "duty": 0.612,
+  "drift": 0,
+  "spatial": 0.0647,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0635,
+    "spatial": 0.0653,
+    "uniformSwing": 0.2253,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.816,
+    "duty": 0.611
+   },
+   "128": {
+    "churn": 0.0787,
+    "spatial": 0.0647,
+    "uniformSwing": 0.1222,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.891,
+    "duty": 0.612
+   },
+   "192": {
+    "churn": 0.1044,
+    "spatial": 0.0629,
+    "uniformSwing": 0.2171,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.852,
+    "duty": 0.632
+   }
+  },
+  "rateScale": 13.435,
+  "ampScale": 1.115,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.05,
+   "dutyErr": 0.5
+  }
+ },
+ "46": {
+  "name": "Gradient",
+  "archetype": "pulse",
+  "rate": {
+   "a": 0.000048438,
+   "b": 0.00923,
+   "r2": 0.214
+  },
+  "wavelength": 0.042,
+  "lit": 1,
+  "duty": 0.841,
+  "drift": 0,
+  "spatial": 0.022,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0089,
+    "spatial": 0.0164,
+    "uniformSwing": 0.0804,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 1,
+    "duty": 0.856
+   },
+   "128": {
+    "churn": 0.0223,
+    "spatial": 0.022,
+    "uniformSwing": 0.1176,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 1,
+    "duty": 0.841
+   },
+   "192": {
+    "churn": 0.0151,
+    "spatial": 0.0162,
+    "uniformSwing": 0.0483,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 1,
+    "duty": 0.848
+   }
+  },
+  "rateScale": 8.43,
+  "ampScale": 2.61,
+  "fitQuality": {
+   "churnErr": 0.02,
+   "litErr": 0.11,
+   "dutyErr": 0.5
+  }
+ },
+ "64": {
+  "name": "Juggle",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00017344,
+   "b": 0.1164,
+   "r2": 0.981
+  },
+  "wavelength": 0.25,
+  "lit": 0.946,
+  "duty": 0.44,
+  "drift": -0.077,
+  "spatial": 0.1471,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.1266,
+    "spatial": 0.1461,
+    "uniformSwing": 0.1923,
+    "drift": -0.154,
+    "wavelength": 0.042,
+    "lit": 0.793,
+    "duty": 0.366
+   },
+   "128": {
+    "churn": 0.1404,
+    "spatial": 0.1471,
+    "uniformSwing": 0.1554,
+    "drift": -0.077,
+    "wavelength": 0,
+    "lit": 0.946,
+    "duty": 0.44
+   },
+   "192": {
+    "churn": 0.1488,
+    "spatial": 0.1454,
+    "uniformSwing": 0.0999,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 0.936,
+    "duty": 0.477
+   }
+  },
+  "rateScale": 1.817,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.45,
+   "dutyErr": 0.46
+  }
+ },
+ "73": {
+  "name": "Noise 4",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00073281,
+   "b": 0.01453,
+   "r2": 0.917
+  },
+  "wavelength": 0.25,
+  "lit": 0.998,
+  "duty": 0.497,
+  "drift": 0,
+  "spatial": 0.1637,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0696,
+    "spatial": 0.179,
+    "uniformSwing": 0.1516,
+    "drift": 0,
+    "wavelength": 0.063,
+    "lit": 0.996,
+    "duty": 0.484
+   },
+   "128": {
+    "churn": 0.092,
+    "spatial": 0.1637,
+    "uniformSwing": 0.1267,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 0.998,
+    "duty": 0.497
+   },
+   "192": {
+    "churn": 0.1634,
+    "spatial": 0.1601,
+    "uniformSwing": 0.1408,
+    "drift": 0.638,
+    "wavelength": 0.208,
+    "lit": 0.999,
+    "duty": 0.492
+   }
+  },
+  "rateScale": 1.474,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.46,
+   "dutyErr": 0.5
+  }
+ },
+ "80": {
+  "name": "Twinklefox",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00012422,
+   "b": 0.0002,
+   "r2": 0.941
+  },
+  "wavelength": 0.25,
+  "lit": 0.834,
+  "duty": 0.175,
+  "drift": 0,
+  "spatial": 0.1103,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.007,
+    "spatial": 0.1327,
+    "uniformSwing": 0.0478,
+    "drift": 0,
+    "wavelength": 0.146,
+    "lit": 0.838,
+    "duty": 0.187
+   },
+   "128": {
+    "churn": 0.0184,
+    "spatial": 0.1103,
+    "uniformSwing": 0.06,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 0.834,
+    "duty": 0.175
+   },
+   "192": {
+    "churn": 0.0229,
+    "spatial": 0.0968,
+    "uniformSwing": 0.0611,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 0.786,
+    "duty": 0.149
+   }
+  },
+  "rateScale": 1.964,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.44,
+   "dutyErr": 0.1
+  }
+ },
+ "83": {
+  "name": "Solid Pattern",
+  "archetype": "gradient",
+  "rate": {
+   "a": 0,
+   "b": 0,
+   "r2": 0
+  },
+  "wavelength": 0.042,
+  "lit": 0.625,
+  "duty": 0.494,
+  "drift": 0,
+  "spatial": 0.0424,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0,
+    "spatial": 0.0424,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.494
+   },
+   "128": {
+    "churn": 0,
+    "spatial": 0.0424,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.494
+   },
+   "192": {
+    "churn": 0,
+    "spatial": 0.0424,
+    "uniformSwing": 0,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.494
+   }
+  },
+  "rateScale": 1,
+  "ampScale": 0.37,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.19,
+   "dutyErr": 0.43
+  }
+ },
+ "101": {
+  "name": "Pacifica",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00031719,
+   "b": 0.01707,
+   "r2": 0.999
+  },
+  "wavelength": 0.292,
+  "lit": 1,
+  "duty": 0.49,
+  "drift": -0.149,
+  "spatial": 0.0942,
+  "selfColoured": true,
+  "measured": {
+   "64": {
+    "churn": 0.037,
+    "spatial": 0.134,
+    "uniformSwing": 0.1624,
+    "drift": 0,
+    "wavelength": 0.292,
+    "lit": 0.992,
+    "duty": 0.512
+   },
+   "128": {
+    "churn": 0.0584,
+    "spatial": 0.0942,
+    "uniformSwing": 0.147,
+    "drift": -0.149,
+    "wavelength": 0.292,
+    "lit": 1,
+    "duty": 0.49
+   },
+   "192": {
+    "churn": 0.0776,
+    "spatial": 0.0985,
+    "uniformSwing": 0.132,
+    "drift": 0,
+    "wavelength": 0.188,
+    "lit": 1,
+    "duty": 0.503
+   }
+  },
+  "rateScale": 1.738,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.46,
+   "dutyErr": 0.49
+  }
+ },
+ "102": {
+  "name": "Candle Multi",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.000071875,
+   "b": 0.0122,
+   "r2": 0.83
+  },
+  "wavelength": 0.042,
+  "lit": 0.625,
+  "duty": 0.379,
+  "drift": 0,
+  "spatial": 0.0414,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0156,
+    "spatial": 0.0414,
+    "uniformSwing": 0.0147,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.379
+   },
+   "128": {
+    "churn": 0.0238,
+    "spatial": 0.0414,
+    "uniformSwing": 0.0158,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.379
+   },
+   "192": {
+    "churn": 0.0248,
+    "spatial": 0.0423,
+    "uniformSwing": 0.0145,
+    "drift": 0,
+    "wavelength": 0.042,
+    "lit": 0.625,
+    "duty": 0.379
+   }
+  },
+  "rateScale": 2.224,
+  "ampScale": 2.334,
+  "fitQuality": {
+   "churnErr": 0.03,
+   "litErr": 0.18,
+   "dutyErr": 0.42
+  }
+ },
+ "108": {
+  "name": "Sine",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.0010211,
+   "b": 0.0278,
+   "r2": 0.982
+  },
+  "wavelength": 0.063,
+  "lit": 0.77,
+  "duty": 0.249,
+  "drift": 1.077,
+  "spatial": 0.2559,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0881,
+    "spatial": 0.2673,
+    "uniformSwing": 0.0346,
+    "drift": 0,
+    "wavelength": 0.063,
+    "lit": 0.771,
+    "duty": 0.255
+   },
+   "128": {
+    "churn": 0.1686,
+    "spatial": 0.2559,
+    "uniformSwing": 0.027,
+    "drift": 1.077,
+    "wavelength": 0.063,
+    "lit": 0.77,
+    "duty": 0.249
+   },
+   "192": {
+    "churn": 0.2188,
+    "spatial": 0.2493,
+    "uniformSwing": 0.0328,
+    "drift": -3.179,
+    "wavelength": 0.063,
+    "lit": 0.79,
+    "duty": 0.246
+   }
+  },
+  "rateScale": 2.091,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.4,
+   "dutyErr": 0.17
+  }
+ },
+ "110": {
+  "name": "Flow",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00021875,
+   "b": 0.04223,
+   "r2": 0.869
+  },
+  "wavelength": 0.167,
+  "lit": 0.931,
+  "duty": 0.5,
+  "drift": -0.085,
+  "spatial": 0.242,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0531,
+    "spatial": 0.2996,
+    "uniformSwing": 0.072,
+    "drift": 0.021,
+    "wavelength": 0.146,
+    "lit": 0.926,
+    "duty": 0.491
+   },
+   "128": {
+    "churn": 0.0765,
+    "spatial": 0.242,
+    "uniformSwing": 0.0763,
+    "drift": -0.085,
+    "wavelength": 0.167,
+    "lit": 0.931,
+    "duty": 0.5
+   },
+   "192": {
+    "churn": 0.0811,
+    "spatial": 0.2708,
+    "uniformSwing": 0.073,
+    "drift": 0,
+    "wavelength": 0.083,
+    "lit": 0.951,
+    "duty": 0.497
+   }
+  },
+  "rateScale": 1.873,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.42,
+   "dutyErr": 0.5
+  }
+ },
+ "112": {
+  "name": "Dancing Shadows",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00041875,
+   "b": 0.05563,
+   "r2": 0.968
+  },
+  "wavelength": 0.25,
+  "lit": 0.884,
+  "duty": 0.236,
+  "drift": -0.064,
+  "spatial": 0.1168,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0796,
+    "spatial": 0.1043,
+    "uniformSwing": 0.0908,
+    "drift": 0.128,
+    "wavelength": 0,
+    "lit": 0.8,
+    "duty": 0.188
+   },
+   "128": {
+    "churn": 0.1149,
+    "spatial": 0.1168,
+    "uniformSwing": 0.0928,
+    "drift": -0.064,
+    "wavelength": 0,
+    "lit": 0.884,
+    "duty": 0.236
+   },
+   "192": {
+    "churn": 0.1332,
+    "spatial": 0.1035,
+    "uniformSwing": 0.101,
+    "drift": -0.128,
+    "wavelength": 0.063,
+    "lit": 0.8,
+    "duty": 0.205
+   }
+  },
+  "rateScale": 1.889,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.48,
+   "dutyErr": 0.13
+  }
+ },
+ "115": {
+  "name": "Blends",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.00039063,
+   "b": 0.03483,
+   "r2": 0.858
+  },
+  "wavelength": 0.104,
+  "lit": 0.847,
+  "duty": 0.499,
+  "drift": -0.026,
+  "spatial": 0.4096,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0657,
+    "spatial": 0.3959,
+    "uniformSwing": 0.0939,
+    "drift": 0,
+    "wavelength": 0.104,
+    "lit": 0.844,
+    "duty": 0.491
+   },
+   "128": {
+    "churn": 0.0731,
+    "spatial": 0.4096,
+    "uniformSwing": 0.1025,
+    "drift": -0.026,
+    "wavelength": 0.104,
+    "lit": 0.847,
+    "duty": 0.499
+   },
+   "192": {
+    "churn": 0.1157,
+    "spatial": 0.4086,
+    "uniformSwing": 0.1096,
+    "drift": 0.333,
+    "wavelength": 0.104,
+    "lit": 0.849,
+    "duty": 0.495
+   }
+  },
+  "rateScale": 1.481,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.36,
+   "dutyErr": 0.5
+  }
+ },
+ "117": {
+  "name": "Dynamic Smooth",
+  "archetype": "wave",
+  "rate": {
+   "a": 0.000089062,
+   "b": 0.00053,
+   "r2": 0.935
+  },
+  "wavelength": 0.25,
+  "lit": 1,
+  "duty": 0.46,
+  "drift": 0,
+  "spatial": 0.1741,
+  "selfColoured": false,
+  "measured": {
+   "64": {
+    "churn": 0.0071,
+    "spatial": 0.1888,
+    "uniformSwing": 0.0022,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 0.989,
+    "duty": 0.385
+   },
+   "128": {
+    "churn": 0.0102,
+    "spatial": 0.1741,
+    "uniformSwing": 0.0235,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 1,
+    "duty": 0.46
+   },
+   "192": {
+    "churn": 0.0185,
+    "spatial": 0.1496,
+    "uniformSwing": 0.0477,
+    "drift": 0,
+    "wavelength": 0,
+    "lit": 1,
+    "duty": 0.426
+   }
+  },
+  "rateScale": 1.373,
+  "ampScale": 6,
+  "fitQuality": {
+   "churnErr": 0,
+   "litErr": 0.44,
+   "dutyErr": 0.45
+  }
+ },
+ "145": {
+  "name": " ♫ Noisemove",
+  "archetype": "audio",
+  "note": "Follows live audio; there is no fixed motion to record."
+ }
+}

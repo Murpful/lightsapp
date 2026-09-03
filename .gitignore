@@ -1,0 +1,25 @@
+# Live operational data. This is the church's, not the project's: the song
+# library, the queue, what is on stage right now. Updates must never overwrite
+# it, and it must never be clobbered by a clone.
+#
+# data/seed/ IS committed -- it is what a fresh install starts from, plus the
+# hardware measurements that took hours of controller time to produce.
+data/*
+!data/seed/
+!data/seed/**
+
+# Preset dumps pulled off the controllers. Large, regenerable, and specific to
+# one rig at one moment.
+backups/
+
+# Rollback copies kept by the updater.
+versions/
+
+# Local editor / assistant state.
+.claude/
+
+# Windows and editor noise.
+Thumbs.db
+desktop.ini
+*.swp
+*~

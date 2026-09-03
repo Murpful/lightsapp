@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LightsApp is not running</title>
+<style>
+  :root {
+    --bg: #0c0e13; --panel: #14171f; --panel-2: #1a1e28; --line: #262b38;
+    --text: #e6e9f0; --dim: #8a93a6; --accent: #4c8dff; --warn: #f0a63c;
+    --ok: #4cd07d;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: var(--bg); color: var(--text); padding: 24px;
+    font: 14px/1.55 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  }
+  .card {
+    width: 100%; max-width: 560px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 14px; padding: 28px 30px;
+  }
+  h1 { margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+  .lede { margin: 0 0 22px; color: var(--dim); }
+
+  .status {
+    display: flex; align-items: center; gap: 9px;
+    margin: 0 0 22px; padding: 10px 13px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px;
+    font-size: 13px; color: var(--dim);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--warn); box-shadow: 0 0 9px var(--warn);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .status.up { color: var(--text); }
+  .status.up .dot { background: var(--ok); box-shadow: 0 0 9px var(--ok); animation: none; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+
+  h2 { margin: 0 0 9px; font-size: 12px; text-transform: uppercase;
+       letter-spacing: .07em; color: var(--dim); font-weight: 600; }
+  ol { margin: 0 0 22px; padding-left: 20px; }
+  li { margin-bottom: 5px; }
+  li::marker { color: var(--dim); }
+
+  .cmd {
+    display: flex; align-items: stretch; gap: 0;
+    border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+    background: #0a0c10; margin-bottom: 8px;
+  }
+  code {
+    flex: 1; padding: 11px 13px; overflow-x: auto; white-space: nowrap;
+    font: 12.5px/1.4 ui-monospace, Consolas, "Cascadia Mono", monospace;
+    color: #cfe0ff;
+  }
+  .copy {
+    flex: none; padding: 0 15px; border: 0; border-left: 1px solid var(--line);
+    background: transparent; color: var(--dim); cursor: pointer;
+    font-size: 12px; font-family: inherit;
+  }
+  .copy:hover { color: var(--text); background: var(--panel-2); }
+  .hint { margin: 0 0 24px; font-size: 12px; color: var(--dim); }
+
+  .go {
+    display: block; width: 100%; padding: 13px; text-align: center;
+    background: var(--accent); color: #fff; border: 0; border-radius: 9px;
+    font: 600 14px/1 inherit; cursor: pointer; text-decoration: none;
+  }
+  .go:hover { background: #5f9aff; }
+  .go[disabled] { background: var(--panel-2); color: var(--dim); cursor: default; }
+  .foot { margin: 18px 0 0; font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>LightsApp isn&rsquo;t running</h1>
+    <p class="lede">The lights themselves are unaffected &mdash; they keep whatever
+      they are showing. Only the control page is down.</p>
+
+    <div class="status" id="status">
+      <span class="dot"></span>
+      <span id="statusText">Checking for the server&hellip;</span>
+    </div>
+
+    <h2>Start it</h2>
+    <ol>
+      <li>Double-click <strong>Start LightsApp</strong> on the desktop.</li>
+      <li>This page turns into the app on its own once it is up.</li>
+    </ol>
+
+    <h2>Or from a terminal</h2>
+    <div class="cmd">
+      <code id="cmd">cd "C:\Users\Griffin\Desktop\LightsApp"; node server.js</code>
+      <button class="copy" id="copy" type="button">Copy</button>
+    </div>
+    <p class="hint">Leave that window open &mdash; closing it stops the app.</p>
+
+    <a class="go" id="go" href="http://127.0.0.1:8420/">Open LightsApp</a>
+
+    <p class="foot">It also starts by itself when you sign in to Windows.</p>
+  </div>
+
+<script>
+  const URL_APP = 'http://127.0.0.1:8420/';
+  const statusEl = document.getElementById('status');
+  const textEl = document.getElementById('statusText');
+
+  /**
+   * Liveness, probed with an image rather than fetch.
+   *
+   * This page is opened from disk, and Chrome heavily restricts fetch from a
+   * file:// origin -- it can fail outright even when the server is answering,
+   * which would leave this page insisting the app is down forever. An <img>
+   * load has no such restriction: `onload` fires only if a real image came
+   * back, and `onerror` if nothing is listening. ping.png exists purely as the
+   * thing to load. The timestamp defeats the cache so every check is live.
+   */
+  function isUp() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const done = (result) => {
+        img.onload = img.onerror = null;
+        clearTimeout(timer);
+        resolve(result);
+      };
+      // A hung connection must not stall the poll; treat slow as down and retry.
+      const timer = setTimeout(() => done(false), 1500);
+      img.onload = () => done(true);
+      img.onerror = () => done(false);
+      img.src = `${URL_APP}ping.png?t=${Date.now()}`;
+    });
+  }
+
+  let redirecting = false;
+  async function check() {
+    if (redirecting) return;
+    if (await isUp()) {
+      redirecting = true;
+      statusEl.classList.add('up');
+      textEl.textContent = 'Running — opening it now…';
+      setTimeout(() => { location.href = URL_APP; }, 600);
+    } else {
+      textEl.textContent = 'Not running yet — checking every 2 seconds…';
+    }
+  }
+
+  check();
+  setInterval(check, 2000);
+
+  document.getElementById('copy').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    try {
+      await navigator.clipboard.writeText(document.getElementById('cmd').textContent);
+      btn.textContent = 'Copied';
+    } catch {
+      // Clipboard access can be refused on a file:// page; select it instead so
+      // Ctrl+C still works rather than leaving the button looking broken.
+      const r = document.createRange();
+      r.selectNodeContents(document.getElementById('cmd'));
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      btn.textContent = 'Press Ctrl+C';
+    }
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+</script>
+</body>
+</html>
