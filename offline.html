@@ -93,7 +93,7 @@
 
     <h2>Or from a terminal</h2>
     <div class="cmd">
-      <code id="cmd">cd "C:\Users\Griffin\Desktop\LightsApp"; node server.js</code>
+      <code id="cmd">node server.js</code>
       <button class="copy" id="copy" type="button">Copy</button>
     </div>
     <p class="hint">Leave that window open &mdash; closing it stops the app.</p>
@@ -107,6 +107,22 @@
   const URL_APP = 'http://127.0.0.1:8420/';
   const statusEl = document.getElementById('status');
   const textEl = document.getElementById('statusText');
+
+  /**
+   * Builds the terminal command from where this page actually sits.
+   *
+   * The folder was hardcoded, which is wrong for anyone who installs it
+   * somewhere else -- and this page is only ever read by someone already stuck,
+   * so handing them a path that does not exist is the worst moment for it. This
+   * file lives in the app folder, so its own URL is the answer.
+   */
+  try {
+    const dir = decodeURIComponent(location.pathname)
+      .replace(/\/[^/]*$/, '')      // drop "/offline.html"
+      .replace(/^\//, '')           // drop the leading slash Windows paths gain
+      .replace(/\//g, '\\');
+    if (dir) document.getElementById('cmd').textContent = `cd "${dir}"; node server.js`;
+  } catch { /* leave the bare command, which works from the app folder */ }
 
   /**
    * Liveness, probed with an image rather than fetch.

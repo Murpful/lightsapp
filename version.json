@@ -1,5 +1,5 @@
 {
-  "version": "1.2.1",
+  "version": "1.2.2",
   "released": "2026-09-03",
-  "notes": "Audit fixes: archiving or deleting a queued song no longer leaves the queue pointing past the end, and archived songs can no longer be clicked back into the running order."
+  "notes": "Correct copyright holder, and the offline page now works out its own install folder instead of naming one machine."
 }
