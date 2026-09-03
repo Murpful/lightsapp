@@ -7,5 +7,11 @@
     "on the next update. Remove the entry once the feature is simply part of",
     "the app."
   ],
-  "features": {}
+  "features": {
+    "quickBlackoutKey": {
+      "stage": "beta",
+      "label": "Panic key",
+      "desc": "Hold Esc twice to black out instantly, without reaching for the mouse."
+    }
+  }
 }

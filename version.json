@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "released": "2026-09-03",
-  "notes": "Version shown in the header, with updates and testing mode behind it. Requests go to Discord. Song archive."
+  "notes": "Adds an experimental Panic key. Turn on Beta mode to try it."
 }
