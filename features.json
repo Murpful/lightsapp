@@ -14,11 +14,5 @@
       "desc": "One line on what it does and how finished it is."
     }
   },
-  "features": {
-    "quickBlackoutKey": {
-      "stage": "beta",
-      "label": "Panic key",
-      "desc": "Hold Esc twice to black out instantly, without reaching for the mouse."
-    }
-  }
+  "features": {}
 }

@@ -1,5 +1,5 @@
 {
   "version": "1.2.0",
   "released": "2026-09-03",
-  "notes": "Adds an experimental Panic key. Turn on Beta mode to try it."
+  "notes": "Beta mode: experimental features can ship dormant and be switched on when you want to try them. Nothing experimental is shipping yet."
 }
