@@ -307,6 +307,46 @@ html, body {
 .mini.pin.on { color: var(--warn); }
 .mini.pin:hover { color: var(--warn); border-color: var(--accent-dim); }
 
+/* ------------------------------------------------------------- update bar */
+
+/* Sits along the bottom rather than over the controls: an update is never
+   urgent enough to cover the queue during a service. */
+.update-bar {
+  position: fixed; left: 12px; right: 12px; bottom: 12px;
+  z-index: 60;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px;
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+}
+.update-bar.hidden { display: none; }
+.update-dot {
+  width: 8px; height: 8px; flex: none; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent);
+}
+.update-text { flex: 1; min-width: 0; font-size: 13px; }
+.update-text strong { display: block; font-weight: 600; }
+.update-text span { color: var(--dim); font-size: 12px; }
+.update-bar.busy { border-color: var(--line); }
+.update-bar.blocked { border-color: #6a5326; }
+
+.request-fab { right: 78px; }
+
+.req-card { width: min(520px, 94vw); }
+.req-body {
+  width: 100%;
+  padding: 9px 11px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit; font-size: 13px;
+  resize: vertical;
+}
+.req-body:focus { outline: none; border-color: var(--accent-dim); }
+
 /* ----------------------------------------------------------------- archive */
 
 /* Pushed to the very bottom whatever the sort, and visually quieter than a

@@ -1,0 +1,11 @@
+{
+  "_comment": [
+    "Feature flags. Anything marked 'testing' ships to the booth but stays",
+    "invisible until someone switches Testing mode on, so a new idea can be",
+    "delivered and tried without changing how the lights are run day to day.",
+    "Change a stage to 'stable' and push, and it becomes normal for everyone",
+    "on the next update. Remove the entry once the feature is simply part of",
+    "the app."
+  ],
+  "features": {}
+}

@@ -209,7 +209,46 @@
   </div>
 
   <!-- ------------------------------------------------------------ help -->
+  <button id="btnRequest" class="help-fab request-fab"
+          title="Ask for a change or report something odd">Request</button>
   <button id="btnHelp" class="help-fab" title="Who to contact">Help</button>
+
+  <!-- ---------------------------------------------------- update banner -->
+  <div id="updateBar" class="update-bar hidden">
+    <span class="update-dot" aria-hidden="true"></span>
+    <div class="update-text">
+      <strong id="updateTitle">An update is available</strong>
+      <span id="updateNotes"></span>
+    </div>
+    <button id="updateApply" class="btn primary tiny">Update now</button>
+    <button id="updateLater" class="btn ghost tiny">Later</button>
+  </div>
+
+  <!-- --------------------------------------------------- feature request -->
+  <div id="requestPanel" class="modal hidden">
+    <div class="modal-card req-card">
+      <div class="modal-head">
+        <h3>Request a change</h3>
+        <button id="reqClose" class="btn ghost tiny">&#10005;</button>
+      </div>
+      <p class="modal-note">Describe what you would like the app to do, or what
+        went wrong. This opens an email &mdash; nothing is sent until you press
+        send in your mail program.</p>
+      <label class="ctl"><span>What kind?</span>
+        <select id="reqKind">
+          <option value="A new feature">A new feature</option>
+          <option value="Something is broken">Something is broken</option>
+          <option value="A change to how something works">A change to how something works</option>
+        </select></label>
+      <label class="ctl"><span>Details</span>
+        <textarea id="reqBody" rows="7" class="req-body"
+          placeholder="What would you like it to do? If something went wrong, what were you doing at the time?"></textarea></label>
+      <div class="modal-foot">
+        <span class="spacer"></span>
+        <button id="reqSend" class="btn primary">Open email</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ------------------------------------------------- hidden effects -->
   <div id="hiddenPanel" class="modal hidden">

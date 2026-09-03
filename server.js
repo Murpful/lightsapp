@@ -17,10 +17,32 @@ import * as wled from './lib/wled.js';
 import * as store from './lib/store.js';
 import { buildScenes, normalize, extractDate } from './lib/match.js';
 import { captureScene } from './lib/capture.js';
+import * as updater from './lib/update.js';
 
 const PORT = Number(process.env.PORT || 8420);
 const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
+
+/**
+ * Where updates come from.
+ *
+ * `main` is what the booth runs. `beta` exists for changes not yet fit to be
+ * on that machine at all -- most work does not need it, because a feature can
+ * ship on main marked "testing" and stay invisible until switched on.
+ */
+const REPO = { owner: 'Murpful', repo: 'lightsapp', branch: 'main' };
+
+/** Where a feature request is sent, since the booth has no GitHub account. */
+const MAINTAINER_EMAIL = 'murpful@gmail.com';
+
+/** Feature flags shipped with the code, not operator data, so read from root. */
+const readFeatures = async () => {
+  try {
+    return JSON.parse(await readFile(path.join(process.cwd(), 'features.json'), 'utf8'));
+  } catch {
+    return { features: {} };
+  }
+};
 
 // Only presets from this service year onward are carried into the library.
 // Older ones stay on the controllers untouched -- they are simply not surfaced.
@@ -800,6 +822,7 @@ async function handleApi(req, res, url) {
     return json(res, 200, {
       devices: state.devices, scenes: state.scenes, queue: state.queue,
       meta: state.meta, blacklist: state.blacklist, presetIndex: index,
+      maintainer: MAINTAINER_EMAIL,
     });
   }
 
@@ -1402,6 +1425,97 @@ async function handleApi(req, res, url) {
     return json(res, 200, state.devices.map((d, i) => ({ devId: d.id, ok: results[i].status === 'fulfilled' })));
   }
 
+  /**
+   * What version is running, and whether a newer one has been published.
+   *
+   * Deliberately cannot fail loudly: a booth PC is offline more often than not,
+   * and "could not reach GitHub" is not something to put in front of an
+   * operator during a service. The client simply shows nothing.
+   */
+  if (method === 'GET' && p === '/api/update/status') {
+    const current = await updater.localVersion();
+    const settings = await store.load('update', null) ?? {};
+    const branch = settings.branch ?? REPO.branch;
+    const check = await updater.checkRemote({ ...REPO, branch });
+
+    // Applying restarts the server and swaps files under a live rig. Refuse
+    // while anything is lit -- an update is never so urgent that it should
+    // interrupt what is on stage.
+    const live = state.devices.length ? await pollStatus().catch(() => []) : [];
+    const lit = live.filter((d) => d.online && d.on).map((d) => d.id);
+
+    return json(res, 200, {
+      current,
+      remote: check.ok ? check.remote : null,
+      reachable: check.ok,
+      updateAvailable: check.ok && updater.isNewer(check.remote?.version, current.version),
+      branch,
+      testingMode: Boolean(settings.testingMode),
+      lightsOn: lit,
+      safeToApply: lit.length === 0,
+      backups: await updater.listBackups(),
+      features: await readFeatures(),
+    });
+  }
+
+  /** Testing mode and update channel. Local to this machine, never published. */
+  if (method === 'POST' && p === '/api/update/settings') {
+    const body = await readBody(req);
+    const settings = await store.load('update', null) ?? {};
+    if (body.branch === 'main' || body.branch === 'beta') settings.branch = body.branch;
+    if (typeof body.testingMode === 'boolean') settings.testingMode = body.testingMode;
+    await store.save('update', settings);
+    return json(res, 200, settings);
+  }
+
+  /**
+   * Installs the published version, then restarts into it.
+   *
+   * `force` exists for the author, not the booth: it skips the lights-on guard.
+   */
+  if (method === 'POST' && p === '/api/update/apply') {
+    const body = await readBody(req);
+    const settings = await store.load('update', null) ?? {};
+    const branch = settings.branch ?? REPO.branch;
+
+    if (!body.force) {
+      const live = await pollStatus().catch(() => []);
+      const lit = live.filter((d) => d.online && d.on).map((d) => d.id);
+      if (lit.length) {
+        return json(res, 409, {
+          error: 'the lights are on', lightsOn: lit,
+          hint: 'blackout first, or update between services',
+        });
+      }
+    }
+
+    try {
+      const result = await updater.applyUpdate({ ...REPO, branch });
+      console.log(`  updated to ${result.version} (rollback kept as ${result.backup})`);
+      scheduleRestart();
+      return json(res, 200, { ...result, restarting: true });
+    } catch (e) {
+      console.error('  update failed:', e.message);
+      return json(res, 500, { error: e.message });
+    }
+  }
+
+  /** Puts the previous version back. */
+  if (method === 'POST' && p === '/api/update/undo') {
+    const { name } = await readBody(req);
+    const backups = await updater.listBackups();
+    const target = name ?? backups[0]?.name;
+    if (!target) return json(res, 404, { error: 'nothing to roll back to' });
+    try {
+      const result = await updater.undoUpdate(target);
+      console.log(`  rolled back to ${result.version}`);
+      scheduleRestart();
+      return json(res, 200, { ...result, restarting: true });
+    } catch (e) {
+      return json(res, 500, { error: e.message });
+    }
+  }
+
   if (method === 'POST' && p === '/api/refresh') {
     let ok = 0;
     for (const dev of state.devices) {
@@ -1438,6 +1552,38 @@ server.on('error', (err) => {
   }
   throw err;
 });
+
+/**
+ * Relaunches into the newly installed code.
+ *
+ * The swapped files are already on disk but this process is still running the
+ * old ones, so it hands off to the same hidden launcher the sign-in entry uses
+ * and exits. Detached, so the child outlives us; delayed, so the HTTP response
+ * telling the browser what happened actually gets sent first.
+ */
+function scheduleRestart(delayMs = 700) {
+  setTimeout(() => {
+    // Release the port BEFORE the replacement starts. Starting it first would
+    // hand it an EADDRINUSE -- which this server treats as "already running"
+    // and exits on -- leaving nothing listening at all.
+    try {
+      server.close();
+      server.closeAllConnections?.();
+    } catch { /* already down */ }
+
+    setTimeout(async () => {
+      try {
+        const { spawn } = await import('node:child_process');
+        const vbs = path.join(process.cwd(), 'run-hidden.vbs');
+        spawn('wscript.exe', [vbs], { detached: true, stdio: 'ignore', cwd: process.cwd() }).unref();
+      } catch (e) {
+        console.error('  could not relaunch automatically:', e.message);
+        console.error('  start it again from the desktop icon.');
+      }
+      setTimeout(() => process.exit(0), 400);
+    }, 500);
+  }, delayMs);
+}
 
 /**
  * Starts with nothing to defend.

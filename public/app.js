@@ -762,6 +762,119 @@ $('blList').addEventListener('click', (e) => {
   if (btn) toggleHidden(btn.dataset.bl);
 });
 
+/* ------------------------------------------------------------------ update */
+
+/**
+ * Tells the operator when a newer version has been published, and installs it
+ * on request.
+ *
+ * Never installs on its own. The lights run live services and whoever is at
+ * the desk may not be technical, so a bad release arriving unattended is the
+ * one failure nobody there could recover from. Checking is silent: a booth PC
+ * is offline more often than not, and that is not an error worth showing.
+ */
+let UPDATE = null;
+
+async function checkForUpdate() {
+  try {
+    UPDATE = await api('/api/update/status');
+  } catch {
+    return; // offline, or the server is mid-restart. Say nothing.
+  }
+  const bar = $('updateBar');
+  if (!UPDATE.updateAvailable || UPDATE.dismissed) return bar.classList.add('hidden');
+
+  $('updateTitle').textContent = `Version ${UPDATE.remote.version} is available`;
+  // The lights being on is the usual reason this cannot run, and saying so is
+  // more use than a disabled button with no explanation.
+  const blocked = !UPDATE.safeToApply;
+  $('updateNotes').textContent = blocked
+    ? 'The lights are on — blackout first, or update between services.'
+    : (UPDATE.remote.notes ?? '');
+  bar.classList.toggle('blocked', blocked);
+  $('updateApply').disabled = blocked;
+  bar.classList.remove('hidden');
+}
+
+$('updateLater').addEventListener('click', () => {
+  if (UPDATE) UPDATE.dismissed = true;   // until the page is opened again
+  $('updateBar').classList.add('hidden');
+});
+
+$('updateApply').addEventListener('click', async () => {
+  const bar = $('updateBar');
+  const btn = $('updateApply');
+  btn.disabled = true;
+  bar.classList.add('busy');
+  $('updateTitle').textContent = 'Updating…';
+  $('updateNotes').textContent = 'Downloading and restarting. This takes a few seconds.';
+  try {
+    const r = await api('/api/update/apply', { method: 'POST', body: '{}' });
+    $('updateTitle').textContent = `Installed ${r.version}`;
+    $('updateNotes').textContent = 'Restarting…';
+    await waitForServer();
+    location.reload();
+  } catch (e) {
+    bar.classList.remove('busy');
+    $('updateTitle').textContent = 'Update failed';
+    $('updateNotes').textContent = `${e.message} — the previous version is still running.`;
+    btn.disabled = false;
+  }
+});
+
+/** Polls until the restarted server answers again, then gives up gracefully. */
+async function waitForServer(timeoutMs = 60000) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      await fetch('/api/update/status', { cache: 'no-store' });
+      return true;
+    } catch { /* still down */ }
+  }
+  $('updateNotes').textContent = 'It is taking longer than expected — start it from the desktop icon.';
+  return false;
+}
+
+/* --------------------------------------------------------- feature request */
+
+const closeRequest = () => $('requestPanel').classList.add('hidden');
+
+$('btnRequest').addEventListener('click', () => {
+  $('requestPanel').classList.remove('hidden');
+  $('reqBody').focus();
+});
+$('reqClose').addEventListener('click', closeRequest);
+$('requestPanel').addEventListener('click', (e) => { if (e.target.id === 'requestPanel') closeRequest(); });
+
+/**
+ * Hands the request to the operator's mail program, pre-filled.
+ *
+ * No account, no login and no credentials on this machine -- and nothing is
+ * sent until they press send themselves. The version goes in the body because
+ * the first useful question about any report is which version produced it.
+ */
+$('reqSend').addEventListener('click', () => {
+  const kind = $('reqKind').value;
+  const detail = $('reqBody').value.trim();
+  if (!detail) return toast('Describe what you need first', true);
+
+  const version = UPDATE?.current?.version ?? 'unknown';
+  const body = [
+    detail, '', '---',
+    `Type: ${kind}`,
+    `LightsApp version: ${version}`,
+    `Sent: ${new Date().toLocaleString()}`,
+  ].join('\n');
+
+  const href = `mailto:${encodeURIComponent(S.maintainer ?? '')}`
+    + `?subject=${encodeURIComponent(`LightsApp: ${kind}`)}`
+    + `&body=${encodeURIComponent(body)}`;
+  window.location.href = href;
+  closeRequest();
+  toast('Opening your email — nothing is sent until you press send');
+});
+
 /* -------------------------------------------------------------------- help */
 
 const closeHelp = () => $('helpPanel').classList.add('hidden');
@@ -1040,11 +1153,13 @@ $('btnRefresh').addEventListener('click', async () => {
 const anyModalOpen = () =>
   !$('stage').classList.contains('hidden') ||
   !$('hiddenPanel').classList.contains('hidden') ||
+  !$('requestPanel').classList.contains('hidden') ||
   !$('helpPanel').classList.contains('hidden');
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
     if (colorPopOpen()) return closeColorPop();
+    if (!$('requestPanel').classList.contains('hidden')) return closeRequest();
     if (!$('hiddenPanel').classList.contains('hidden')) return closeHidden();
     if (!$('helpPanel').classList.contains('hidden')) return closeHelp();
     if (ST.open) return closeStage();
@@ -1950,5 +2065,9 @@ async function init(withStatus = true) {
   if (withStatus) refreshStatus();
 }
 
-init().catch((e) => toast(`Startup failed: ${e.message}`, true));
+init()
+  // Checked once on opening the page, never on a timer: the operator should
+  // hear about an update when they sit down, not mid-service.
+  .then(checkForUpdate)
+  .catch((e) => toast(`Startup failed: ${e.message}`, true));
 setInterval(refreshStatus, 3000);
