@@ -177,9 +177,15 @@ html, body {
 
 /* ------------------------------------------------------------------- help */
 
-.help-fab {
+/* One row, so adding or renaming a button never needs its offset working out
+   by hand -- three separate `right:` values drift the moment a label changes. */
+.fab-row {
   position: fixed; right: 16px; bottom: 16px;
   z-index: 70;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.help-fab {
   padding: 8px 16px;
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -384,11 +390,8 @@ body.testing-mode .version-tag { border-color: var(--warn); color: var(--warn); 
 .update-bar.busy { border-color: var(--line); }
 .update-bar.blocked { border-color: #6a5326; }
 
-.request-fab { right: 78px; }
-
-/* Bottom LEFT, away from Help and Request: updating is a different kind of
-   action from asking for help, and it should not be buried in the version. */
-.updates-fab { left: 16px; right: auto; display: flex; align-items: center; gap: 7px; }
+/* Given its own button rather than being buried in the version number. */
+.updates-fab { display: flex; align-items: center; gap: 7px; }
 .updates-fab.available { color: var(--text); border-color: var(--accent); }
 .fab-dot {
   width: 7px; height: 7px; border-radius: 50%;
