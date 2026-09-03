@@ -1,5 +1,5 @@
 {
   "version": "1.0.1",
-  "released": "2026-08-30",
-  "notes": "Test release: proves the updater downloads, backs up, swaps and restarts."
+  "released": "2026-09-03",
+  "notes": "Self-update from GitHub, feature flags for testing mode, and a Request button. The song library is never touched by an update."
 }
