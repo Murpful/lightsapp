@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "released": "2026-08-30",
-  "notes": "First published version. Everything that was already running in the booth: the stage designer, queue, Auto generator, self-healing and the archive."
+  "notes": "Test release: proves the updater downloads, backs up, swaps and restarts."
 }
