@@ -783,8 +783,12 @@ async function checkForUpdate({ silent = false } = {}) {
     return; // offline, or the server is mid-restart. Say nothing.
   }
   UPDATE.dismissed = wasDismissed;
-  $('btnVersion').textContent = `v${UPDATE.current?.version ?? '?'}`;
-  applyTestingMode();
+  // The pill says BETA outright when experimental features are unlocked -- this
+  // machine is not in its normal state and nobody should have to go looking.
+  $('btnVersion').textContent = UPDATE.beta
+    ? `v${UPDATE.current?.version ?? '?'} ⚡ BETA`
+    : `v${UPDATE.current?.version ?? '?'}`;
+  applyBetaMode();
 
   // The corner button carries the news even after the banner is dismissed, so
   // an update is never lost just because someone pressed Later.
@@ -811,7 +815,7 @@ async function checkForUpdate({ silent = false } = {}) {
 /* ------------------------------------------------------------ about panel */
 
 /**
- * Version, updates and testing mode, behind the version number in the header.
+ * Version, updates and beta mode, behind the version number in the header.
  *
  * Everything the operator can do about updates lives here rather than being
  * spread around: what is running, check now, install, undo, and the testing
@@ -822,7 +826,7 @@ function renderAbout() {
   if (!UPDATE) return;
   const cur = UPDATE.current ?? {};
   $('btnVersion').textContent = `v${cur.version ?? '?'}`;
-  $('aboutVersion').textContent = `v${cur.version ?? '?'}`;
+  $('aboutVersion').textContent = UPDATE.beta ? `v${cur.version ?? '?'} ⚡ beta` : `v${cur.version ?? '?'}`;
   $('aboutNotes').textContent = cur.notes ?? '';
 
   const up = UPDATE.updateAvailable;
@@ -835,7 +839,18 @@ function renderAbout() {
   $('aboutUpdate').classList.toggle('hidden', !up);
   $('aboutUpdate').disabled = !UPDATE.safeToApply;
 
-  $('aboutTesting').checked = Boolean(UPDATE.testingMode);
+  $('aboutBeta').checked = Boolean(UPDATE.beta);
+
+  // Name what beta actually unlocks, so it is an informed choice rather than a
+  // switch with mysterious consequences.
+  const beta = betaFeatures();
+  const list = $('betaList');
+  list.classList.remove('hidden');
+  list.textContent = beta.length
+    ? (UPDATE.beta
+        ? `Unlocked: ${beta.map((f) => f.label).join(' · ')}`
+        : `Waiting behind this switch: ${beta.map((f) => f.label).join(' · ')}`)
+    : 'Nothing experimental is shipping right now — this stays quiet until an update brings something new.';
 
   const backups = UPDATE.backups ?? [];
   $('aboutRollbackRow').classList.toggle('hidden', !backups.length);
@@ -867,15 +882,17 @@ $('aboutCheck').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
-$('aboutTesting').addEventListener('change', async (e) => {
+$('aboutBeta').addEventListener('change', async (e) => {
   const on = e.target.checked;
   try {
-    await api('/api/update/settings', { method: 'POST', body: JSON.stringify({ testingMode: on }) });
-    if (UPDATE) UPDATE.testingMode = on;
-    applyTestingMode();
+    await api('/api/update/settings', { method: 'POST', body: JSON.stringify({ beta: on }) });
+    if (UPDATE) UPDATE.beta = on;
+    applyBetaMode();
+    renderAbout();
+    const n = betaFeatures().length;
     toast(on
-      ? 'Testing mode on — features still being tried out are now visible'
-      : 'Testing mode off');
+      ? (n ? `⚡ Beta mode on — ${n} experimental feature${n > 1 ? 's' : ''} unlocked` : '⚡ Beta mode on — nothing experimental is shipping just yet')
+      : 'Beta mode off — back to the tested features only');
   } catch (err) {
     e.target.checked = !on;
     toast(err.message, true);
@@ -900,20 +917,40 @@ $('aboutRollback').addEventListener('click', async () => {
 });
 
 /**
- * Shows or hides anything still marked "testing".
+ * Whether a feature should be active right now.
  *
- * A feature ships to the booth dormant and only appears once someone turns
- * testing mode on, so a half-finished idea can be delivered without changing
- * how the lights are run day to day.
+ * Unknown keys default to ON, so a feature that has been promoted and had its
+ * entry deleted from features.json keeps working rather than silently
+ * disappearing on the next update.
  */
-function applyTestingMode() {
-  const on = Boolean(UPDATE?.testingMode);
+function featureOn(key) {
+  const stage = UPDATE?.features?.features?.[key]?.stage;
+  if (stage === 'beta') return Boolean(UPDATE?.beta);
+  return true;
+}
+
+/** Everything currently shipping as experimental, newest ideas included. */
+const betaFeatures = () =>
+  Object.entries(UPDATE?.features?.features ?? {})
+    .filter(([, f]) => f?.stage === 'beta')
+    .map(([key, f]) => ({ key, label: f.label ?? key, desc: f.desc ?? '' }));
+
+/**
+ * Shows or hides anything still marked experimental.
+ *
+ * A feature ships to the booth dormant and only appears once beta mode is on,
+ * so a new idea can be delivered and tried on the real rig without changing how
+ * the lights are run day to day.
+ */
+function applyBetaMode() {
+  const on = Boolean(UPDATE?.beta);
   const flags = UPDATE?.features?.features ?? {};
-  document.body.classList.toggle('testing-mode', on);
+  document.body.classList.toggle('beta-mode', on);
   document.querySelectorAll('[data-feature]').forEach((el) => {
     const stage = flags[el.dataset.feature]?.stage ?? 'stable';
-    el.classList.toggle('hidden', stage === 'testing' && !on);
+    el.classList.toggle('hidden', stage === 'beta' && !on);
   });
+
 }
 
 $('updateLater').addEventListener('click', () => {
@@ -1594,15 +1631,15 @@ function fillFilteredOptions(selectId, names, kind, current, allowedIdx = null) 
 }
 
 /**
- * Effect simulation is OFF.
+ * Effect simulation is OFF, and tabled indefinitely.
  *
  * Reproducing 190 WLED effects faithfully turned out to be a much bigger job
  * than it looked, and a preview that is confidently wrong is worse than no
  * preview -- you can always look at the actual lights. The stage therefore
  * shows only which fixtures are lit and roughly what colour, with no motion.
  *
- * Everything needed to switch it back on is still here: flip this to false and
- * the fitted models drive the animation again.
+ * The fitted models and the recording tools are all still here, so this is
+ * paused rather than abandoned: flip this to false and the animation returns.
  */
 const SIM_DISABLED = true;
 

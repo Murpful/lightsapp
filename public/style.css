@@ -363,7 +363,11 @@ html, body {
 .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* A visible reminder that this machine is not in its normal state. */
-body.testing-mode .version-tag { border-color: var(--warn); color: var(--warn); }
+/* Beta is a visible state, not a hidden preference: the pill and the corner
+   button both go amber so nobody leaves the booth machine in it unknowingly. */
+body.beta-mode .version-tag { border-color: var(--warn); color: var(--warn); }
+.beta-row { border-color: #6a5326; }
+.beta-live { color: var(--warn); }
 
 /* ------------------------------------------------------------- update bar */
 
@@ -397,7 +401,7 @@ body.testing-mode .version-tag { border-color: var(--warn); color: var(--warn); 
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--accent); box-shadow: 0 0 8px var(--accent);
 }
-body.testing-mode .updates-fab { border-color: var(--warn); color: var(--warn); }
+body.beta-mode .updates-fab { border-color: var(--warn); color: var(--warn); }
 
 .req-card { width: min(520px, 94vw); }
 .req-body {

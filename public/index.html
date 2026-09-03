@@ -11,7 +11,7 @@
     <div class="brand">
       <span class="logo"></span>
       <h1>LightsApp</h1>
-      <button id="btnVersion" class="version-tag" title="Version, updates and testing mode">v&hellip;</button>
+      <button id="btnVersion" class="version-tag" title="Version, updates and beta features">v&hellip;</button>
     </div>
     <div class="bar-status" id="devStrip"></div>
     <div class="bar-actions">
@@ -212,7 +212,7 @@
   <!-- ------------------------------------------------------------ help -->
   <div class="fab-row">
     <button id="btnUpdates" class="help-fab updates-fab"
-            title="Version, updates and testing mode">
+            title="Version, updates and beta features">
       <span class="fab-dot" id="updatesDot" hidden></span>Updates</button>
     <button id="btnRequest" class="help-fab"
             title="Ask for a change or report something odd">Request</button>
@@ -249,14 +249,18 @@
         <button id="aboutUpdate" class="btn primary tiny hidden">Update</button>
       </div>
 
-      <div class="about-row">
+      <div class="about-row beta-row">
         <div class="about-main">
-          <strong>Testing mode</strong>
-          <span class="about-sub">Shows features that are still being tried out.
-            Leave this off for normal use.</span>
+          <strong>&#9889; Beta mode</strong>
+          <span class="about-sub">Unlocks experimental features &mdash; new ideas
+            that ship early so they can be tried on the real rig. They can change
+            or misbehave, so it&rsquo;s one for rehearsals rather than ten minutes
+            before a service.</span>
         </div>
-        <label class="switch"><input type="checkbox" id="aboutTesting" /><span></span></label>
+        <label class="switch"><input type="checkbox" id="aboutBeta" /><span></span></label>
       </div>
+
+      <p class="modal-note beta-live hidden" id="betaList"></p>
 
       <div class="about-row hidden" id="aboutRollbackRow">
         <div class="about-main">

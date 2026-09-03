@@ -1,12 +1,19 @@
 {
   "_comment": [
-    "Feature flags. Anything marked 'testing' ships to the booth but stays",
-    "invisible until someone switches Testing mode on, so a new idea can be",
-    "delivered and tried without changing how the lights are run day to day.",
-    "Change a stage to 'stable' and push, and it becomes normal for everyone",
-    "on the next update. Remove the entry once the feature is simply part of",
-    "the app."
+    "Feature flags. Anything marked 'beta' ships to the booth but stays",
+    "invisible until someone switches Beta mode on, so a new idea can be",
+    "delivered and tried on the real rig without changing how the lights are",
+    "run day to day. Change a stage to 'stable' and push, and it becomes normal",
+    "for everyone on the next update. Remove the entry once the feature is",
+    "simply part of the app -- unknown keys default to on, so nothing breaks."
   ],
+  "_example": {
+    "someFeature": {
+      "stage": "beta",
+      "label": "Short name shown in the Beta panel",
+      "desc": "One line on what it does and how finished it is."
+    }
+  },
   "features": {
     "quickBlackoutKey": {
       "stage": "beta",

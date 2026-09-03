@@ -1511,7 +1511,7 @@ async function handleApi(req, res, url) {
       reachable: check.ok,
       updateAvailable: check.ok && updater.isNewer(check.remote?.version, current.version),
       branch,
-      testingMode: Boolean(settings.testingMode),
+      beta: Boolean(settings.beta),
       lightsOn: lit,
       safeToApply: lit.length === 0,
       backups: await updater.listBackups(),
@@ -1519,12 +1519,15 @@ async function handleApi(req, res, url) {
     });
   }
 
-  /** Testing mode and update channel. Local to this machine, never published. */
+  /** Beta mode and update channel. Local to this machine, never published. */
   if (method === 'POST' && p === '/api/update/settings') {
     const body = await readBody(req);
     const settings = await store.load('update', null) ?? {};
     if (body.branch === 'main' || body.branch === 'beta') settings.branch = body.branch;
-    if (typeof body.testingMode === 'boolean') settings.testingMode = body.testingMode;
+    if (typeof body.beta === 'boolean') {
+      settings.beta = body.beta;
+      delete settings.testingMode;   // the name this setting used to have
+    }
     await store.save('update', settings);
     return json(res, 200, settings);
   }
