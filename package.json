@@ -1,11 +1,14 @@
 {
   "name": "lightsapp",
-  "version": "0.1.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
-  "description": "Unified control surface for the sanctuary WLED lighting controllers",
+  "description": "Unified control surface for a WLED stage lighting rig",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "released": "2026-09-03",
-  "notes": "Beta mode: experimental features can ship dormant and be switched on when you want to try them. Nothing experimental is shipping yet."
+  "notes": "Audit fixes: archiving or deleting a queued song no longer leaves the queue pointing past the end, and archived songs can no longer be clicked back into the running order."
 }
