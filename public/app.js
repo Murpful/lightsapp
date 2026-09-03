@@ -7,7 +7,7 @@
 
 import {
   FIXTURES, CROSS_GEO, groupLeader, groupMembers,
-  simulate, makeRenderer, connectLive, setProfiles, setEffectNames, hasProfile, isAudioReactive, modelFor,
+  simulate, makeRenderer, setProfiles, setEffectNames, isAudioReactive, modelFor,
 } from '/stage.js';
 
 const S = {
@@ -1181,11 +1181,7 @@ $('sceneList').addEventListener('click', async (e) => {
         method: 'POST',
         body: JSON.stringify({ sceneId: id, archived: archiving }),
       });
-      const wasQueued = archiving && S.queue.items.some((it) => it.sceneId === id);
-      if (wasQueued) {
-        S.queue.items = S.queue.items.filter((it) => it.sceneId !== id);
-        await saveQueue();
-      }
+      const wasQueued = archiving && await removeFromQueue(id);
       if (archiving) S.expanded.delete(titleOf(sc)); // its folder is gone now
       await init(false);
       toast(archiving
@@ -1213,8 +1209,7 @@ $('sceneList').addEventListener('click', async (e) => {
     btn.disabled = true;
     try {
       await api(`/api/scenes/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      S.queue.items = S.queue.items.filter((it) => it.sceneId !== id);
-      await saveQueue();
+      await removeFromQueue(id);
       await init(false);
       toast(`Deleted "${titleOf(sc)}" for good`);
     } catch (e) {
@@ -1243,12 +1238,45 @@ $('sceneList').addEventListener('click', async (e) => {
   const folder = e.target.closest('.folder');
   if (folder && act !== 'queue') return toggleFolder(folder.dataset.song);
 
+  // An archived row lives OUTSIDE the folder head, so the guard above misses
+  // it. Without this, clicking a retired song's row quietly puts it back in the
+  // running order -- the exact thing archiving it was meant to prevent.
+  if (e.target.closest('.archive-wrap')) return;
+
   // Everything else only queues -- never fires.
   S.queue.items.push({ sceneId: id });
   await saveQueue();
   renderQueue();
   toast('Added to queue');
 });
+
+/**
+ * Takes a song out of the running order, keeping NOW pointing at whatever is
+ * actually on stage.
+ *
+ * Dropping items without correcting `position` leaves it past the end of the
+ * list, and the next NEXT then reads as "stepped past the end of the queue" and
+ * blacks out the rig -- mid-service, from nothing more than tidying the library.
+ * A song can legitimately appear twice, so this counts removals rather than
+ * searching by id.
+ */
+async function removeFromQueue(sceneId) {
+  const doomed = S.queue.items
+    .map((it, i) => (it.sceneId === sceneId ? i : -1))
+    .filter((i) => i >= 0);
+  if (!doomed.length) return false;
+
+  const pos = S.queue.position;
+  const before = doomed.filter((i) => i < pos).length;
+  const removedCurrent = doomed.includes(pos);
+
+  S.queue.items = S.queue.items.filter((it) => it.sceneId !== sceneId);
+  // Losing the live item steps back one, so the next NEXT plays what follows it
+  // rather than repeating something already played.
+  S.queue.position = Math.max(-1, pos - before - (removedCurrent ? 1 : 0));
+  await saveQueue();
+  return true;
+}
 
 $('queueList').addEventListener('click', async (e) => {
   const row = e.target.closest('[data-idx]');
@@ -1284,11 +1312,25 @@ $('queueList').addEventListener('drop', async (e) => {
   const row = e.target.closest('[data-idx]');
   if (!row || dragFrom === null) return;
   const to = Number(row.dataset.idx);
-  const currentId = S.queue.items[S.queue.position]?.sceneId;
-  const [moved] = S.queue.items.splice(dragFrom, 1);
+  const from = dragFrom;
+  const pos = S.queue.position;
+
+  const [moved] = S.queue.items.splice(from, 1);
   S.queue.items.splice(to, 0, moved);
-  // Keep "NOW" pointing at the scene that is actually live after a reorder.
-  if (currentId) S.queue.position = S.queue.items.findIndex((it) => it.sceneId === currentId);
+
+  // Follow the live slot by INDEX, not by scene id. The same song is often
+  // queued twice -- an opener that reprises at the end -- and searching by id
+  // snaps NOW back to the first copy, so the next NEXT replays a song that has
+  // already been and gone.
+  if (pos >= 0) {
+    if (pos === from) {
+      S.queue.position = to;                       // the live item is the one moved
+    } else {
+      let p = pos - (from < pos ? 1 : 0);          // it shifted down on removal
+      if (to <= p) p += 1;                         // and back up on reinsertion
+      S.queue.position = p;
+    }
+  }
   dragFrom = null;
   await saveQueue();
   renderQueue();
@@ -1963,7 +2005,14 @@ async function openStage({ fresh = false, sceneId = null, asCopy = false } = {})
     ST.renderer = makeRenderer($('stCanvas'));
     // The effect and palette lists are rebuilt per selection by syncStageInputs,
     // since blacklisting can change what belongs in them.
-    window.addEventListener('resize', () => { ST.renderer.resize(); renderStage(performance.now()); });
+    // Geometry is built in PIXELS from the canvas size, so resizing without
+    // rebuilding it leaves every LED position and click target computed for the
+    // old canvas: fixtures drift out of place and clicking one selects another.
+    window.addEventListener('resize', () => {
+      ST.renderer.resize();
+      stageGeometry();
+      renderStage(performance.now());
+    });
     $('stCanvas').addEventListener('click', (e) => {
       const r = $('stCanvas').getBoundingClientRect();
       const hit = ST.renderer.hitTest(e.clientX - r.left, e.clientY - r.top);

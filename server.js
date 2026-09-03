@@ -33,9 +33,6 @@ const PUBLIC_DIR = path.join(process.cwd(), 'public');
  */
 const REPO = { owner: 'Murpful', repo: 'lightsapp', branch: 'main' };
 
-/** Where a feature request is sent, since the booth has no GitHub account. */
-const MAINTAINER_EMAIL = 'murpful@gmail.com';
-
 /**
  * Sends a request to a Discord channel.
  *
@@ -228,6 +225,8 @@ const state = {
   lastUptime: {},    // devId -> last seen uptime, for reboot detection
   editHold: {},      // devId -> timestamp until which reconciling is suspended
   rigSnapshot: null, // what was on stage when the designer opened, for backing out
+  reserved: {},      // devId -> Set of slot numbers claimed but not yet written
+  firing: false,     // a scene is mid-flight; the sweep must not talk over it
 };
 
 /**
@@ -336,7 +335,17 @@ async function bootstrap() {
   state.devices = await store.load('devices', DEFAULT_DEVICES);
   state.scenes = await store.load('scenes', null) ?? [];
   state.queue = await store.load('queue', null) ?? { items: [], position: -1 };
-  state.meta = await store.load('meta', null) ?? { effects: [], fxCaps: [], palettes: [] };
+  // Fill in each key separately. A meta.json that is valid JSON but missing a
+  // key -- hand-edited, or written by an older build -- would otherwise leave
+  // `effects` undefined and throw further down, aborting bootstrap before the
+  // server ever listens. That is the "app looks like it does not exist" failure
+  // lib/store.js goes to some trouble to avoid.
+  const meta = await store.load('meta', null) ?? {};
+  state.meta = {
+    effects: Array.isArray(meta.effects) ? meta.effects : [],
+    fxCaps: Array.isArray(meta.fxCaps) ? meta.fxCaps : [],
+    palettes: Array.isArray(meta.palettes) ? meta.palettes : [],
+  };
   state.presets = await store.load('presets.cache', null) ?? {};
   state.previews = await store.load('previews', null) ?? {};
   state.dismissed = await store.load('dismissed', null) ?? [];
@@ -616,24 +625,39 @@ async function nextFreeSlotLive(devId) {
   if (!dev) return null;
   try {
     state.presets[devId] = await wled.getPresets(dev.host);
+    clearReservations(devId);
   } catch {
     return null; // never guess -- better to fail the save than clobber a preset
   }
   return nextFreeSlot(devId, true);
 }
 
+/**
+ * Picks a slot number nothing is using.
+ *
+ * Reservations are held in memory, deliberately NOT written into the preset
+ * cache. Marking the cache was how a failed save left a preset called
+ * "(reserving)" behind: the cache is persisted whether or not the write
+ * succeeded, so the phantom survived restarts, showed up in the designer's
+ * preset list, and blocked that slot for good.
+ *
+ * They are dropped as soon as the device's real presets are read back, which
+ * every successful save does.
+ */
 function nextFreeSlot(devId, reserve = false) {
   const used = new Set(Object.keys(state.presets[devId] ?? {}).map(Number));
+  for (const i of state.reserved[devId] ?? []) used.add(i);
+
   for (let i = 1; i <= 250; i++) {
     if (used.has(i)) continue;
-    if (reserve) {
-      state.presets[devId] ??= {};
-      state.presets[devId][String(i)] = { n: '(reserving)' };
-    }
+    if (reserve) (state.reserved[devId] ??= new Set()).add(i);
     return i;
   }
   return null;
 }
+
+/** Forget this device's reservations; its real presets are now known. */
+const clearReservations = (devId) => { delete state.reserved[devId]; };
 
 async function pollStatus() {
   const results = await Promise.allSettled(
@@ -799,7 +823,20 @@ async function fireSceneVerified(scene) {
   state.repairStreak = {};
   store.save('active', { sceneId: scene.id, at: new Date().toISOString() })
     .catch((e) => console.error('could not record the active scene:', e.message));
-  const results = await fireScene(scene);
+
+  // Hold the sweep off while the fire is in flight. Firing takes seconds to
+  // reach six controllers, and a sweep landing inside that window compares the
+  // NEW scene against fixtures still showing the OLD one, calls all six
+  // drifted, and issues a second round of preset loads on top of the first --
+  // a visible restart, and repairStreak climbing on a rig that is perfectly fine.
+  state.firing = true;
+  let results;
+  try {
+    results = await fireScene(scene);
+  } finally {
+    state.firing = false;
+  }
+
   const cfg = state.reconcile;
   if (!cfg.verifyOnFire) return results;
 
@@ -821,6 +858,8 @@ function startReconciler() {
   if (!state.reconcile.periodic) return;
   const every = Math.max(5, Number(state.reconcile.intervalSec) || 20) * 1000;
   reconcileTimer = setInterval(() => {
+    // Never sweep on top of a fire that is still reaching the controllers.
+    if (state.firing) return;
     reconcileOnce({ dryRun: false }).catch((e) => console.error('reconcile:', e.message));
   }, every);
   reconcileTimer.unref?.();
@@ -838,7 +877,18 @@ const json = (res, code, obj) => {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
-    req.on('data', (c) => { raw += c; if (raw.length > 5e6) req.destroy(); });
+    req.on('data', (c) => {
+      raw += c;
+      // Reject rather than a bare destroy(): destroying with no error emits
+      // neither 'end' nor 'error', so this promise would never settle and the
+      // request handler awaiting it would hang, holding the buffer for ever.
+      if (raw.length > 5e6) {
+        raw = '';
+        const err = new Error('request body too large');
+        req.destroy(err);
+        reject(err);
+      }
+    });
     req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch (e) { reject(e); } });
     req.on('error', reject);
   });
@@ -883,7 +933,6 @@ async function handleApi(req, res, url) {
     return json(res, 200, {
       devices: state.devices, scenes: state.scenes, queue: state.queue,
       meta: state.meta, blacklist: state.blacklist, presetIndex: index,
-      maintainer: MAINTAINER_EMAIL,
     });
   }
 
@@ -1064,7 +1113,7 @@ async function handleApi(req, res, url) {
     await store.save('scenes', state.scenes);
 
     for (const s of saved.filter((x) => x.ok)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); } catch { /* cache stays stale */ }
+      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
     }
     await store.save('presets.cache', state.presets);
 
@@ -1140,7 +1189,7 @@ async function handleApi(req, res, url) {
     await store.save('scenes', state.scenes);
 
     for (const s of saved.filter((x) => x.ok && x.slot != null)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); } catch { /* cache stays stale */ }
+      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
     }
     await store.save('presets.cache', state.presets);
 
@@ -1196,7 +1245,7 @@ async function handleApi(req, res, url) {
     await store.save('scenes', state.scenes);
 
     for (const s of saved.filter((x) => x.created)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); } catch { /* cache stays stale */ }
+      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
     }
     await store.save('presets.cache', state.presets);
 
@@ -1280,6 +1329,13 @@ async function handleApi(req, res, url) {
     const id = decodeURIComponent(p.slice('/api/scenes/'.length));
     const existed = state.scenes.some((s) => s.id === id);
     state.scenes = state.scenes.filter((s) => s.id !== id);
+    // Drop its captured preview too. Ids are time-based but callers may supply
+    // their own, so a later scene reusing this id would otherwise inherit the
+    // deleted song's swatches until the next restart pruned them.
+    if (state.previews[id]) {
+      delete state.previews[id];
+      await store.save('previews', state.previews);
+    }
     await store.save('scenes', state.scenes);
     // Never leave the reconciler defending something that no longer exists.
     // The lights keep whatever they are showing; it is simply not enforced.
@@ -1324,7 +1380,12 @@ async function handleApi(req, res, url) {
       await stopDefending(why);
       releaseHold();
       const results = await Promise.allSettled(state.devices.map((d) => wled.setPower(d.host, false)));
-      state.queue.position = offFront ? -1 : state.queue.items.length;
+      // Park just past the end so Back returns to the last song -- except on an
+      // empty queue, where "just past the end" is 0, an index that reads as a
+      // real slot. Nothing playing is -1.
+      state.queue.position = (offFront || !state.queue.items.length)
+        ? -1
+        : state.queue.items.length;
       await store.save('queue', state.queue);
       return json(res, 200, {
         position: state.queue.position,
@@ -1469,6 +1530,7 @@ async function handleApi(req, res, url) {
     try {
       await wled.savePreset(dev.host, slot, label);
       state.presets[devId] = await wled.getPresets(dev.host);
+      clearReservations(devId);
       await store.save('presets.cache', state.presets);
       return json(res, 200, { devId, slot, name: label });
     } catch (e) {
@@ -1676,7 +1738,7 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && p === '/api/refresh') {
     let ok = 0;
     for (const dev of state.devices) {
-      try { state.presets[dev.id] = await wled.getPresets(dev.host); ok++; } catch { /* keep cached copy */ }
+      try { state.presets[dev.id] = await wled.getPresets(dev.host); clearReservations(dev.id); ok++; } catch { /* keep cached copy */ }
     }
     await store.save('presets.cache', state.presets);
     await refreshMeta();

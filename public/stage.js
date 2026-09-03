@@ -297,45 +297,6 @@ export function buildLayout(W, H, crossGeo, layout = LAYOUT) {
   return out;
 }
 
-/* ------------------------------------------------------------ live frames */
-
-/** Live-view frame header size, established by streaming known solid colours. */
-export const LIVE_HEADER = 8;
-
-/**
- * Frame layout: 'L', version, LED count (16-bit), two flags, current preset id,
- * brightness -- then RGB triplets.
- *
- * The header is EIGHT bytes. This was originally read as six because
- * `(length - 6) % 3 === 0` held, which looked like confirmation but is
- * guaranteed for any header that is a multiple of three -- so it silently
- * agreed with the wrong answer. Being two bytes early rotated every colour
- * channel: a red strip decoded as cyan. Pushing pure red and pure blue to a
- * controller and reading the stream back settled it.
- *
- * The final LED is short by two bytes, so `count` is floored; one LED at the
- * end of a strip is not worth chasing.
- */
-export function liveLayout(buf) {
-  if (!buf?.length || buf[0] !== 0x4c) return null;
-  const bytes = buf.length - LIVE_HEADER;
-  if (bytes < 3) return null;
-  return { header: LIVE_HEADER, count: Math.floor(bytes / 3) };
-}
-
-export function connectLive(host, onFrame) {
-  let ws, closed = false;
-  try { ws = new WebSocket(`ws://${host}/ws`); } catch { return { close() {} }; }
-  ws.binaryType = 'arraybuffer';
-  ws.addEventListener('open', () => ws.send(JSON.stringify({ lv: true })));
-  ws.addEventListener('message', (ev) => {
-    if (typeof ev.data === 'string') return;
-    const buf = new Uint8Array(ev.data);
-    const layout = liveLayout(buf);
-    if (layout) onFrame(buf, layout);
-  });
-  return { close() { if (!closed) { closed = true; try { ws.close(); } catch {} } } };
-}
 
 /* -------------------------------------------------------------- simulator */
 
@@ -384,7 +345,6 @@ const hash = (i) => { const x = Math.sin(i * 127.1) * 43758.5453; return x - Mat
  */
 let FX_MODELS = {};
 export const setProfiles = (m) => { FX_MODELS = m ?? {}; };
-export const hasProfile = (fx) => Boolean(FX_MODELS[fx] && FX_MODELS[fx].archetype !== 'audio');
 export const modelFor = (fx) => FX_MODELS[fx] ?? null;
 
 /**

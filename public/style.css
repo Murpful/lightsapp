@@ -224,11 +224,7 @@ html, body {
   cursor: pointer;
 }
 .tab.active { background: var(--panel-2); color: var(--text); border-color: var(--accent-dim); }
-.badge {
-  display: inline-block; min-width: 17px; padding: 0 4px;
-  background: var(--accent-dim); border-radius: 9px;
-  font-size: 11px; color: #fff; text-align: center;
-}
+
 
 .list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 12px; }
 .list.hidden { display: none; }
