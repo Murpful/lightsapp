@@ -37,7 +37,22 @@ async function api(path, opts = {}) {
 }
 
 let toastTimer;
+/**
+ * What the operator has been shown recently, for bug reports.
+ * Toasts are how every failure is reported, and they are gone in seconds --
+ * so by the time someone writes "it said something about the drums", this is
+ * the only record of what it actually said.
+ */
+const RECENT = { toasts: [], errors: [] };
+const remember = (list, item, max = 40) => {
+  list.push({ at: new Date().toISOString(), ...item });
+  if (list.length > max) list.shift();
+};
+window.addEventListener('error', (e) => remember(RECENT.errors, { message: e.message, where: `${e.filename}:${e.lineno}` }));
+window.addEventListener('unhandledrejection', (e) => remember(RECENT.errors, { message: String(e.reason?.message ?? e.reason) }));
+
 function toast(msg, isErr = false) {
+  remember(RECENT.toasts, { msg, isErr });
   const el = $('toast');
   el.textContent = msg;
   el.className = `toast show${isErr ? ' err' : ''}`;
@@ -463,10 +478,24 @@ $('deviceCards').addEventListener('click', (e) => {
  * Only presets no song uses can be ticked; the server re-checks that itself and
  * backs the controller up before deleting anything.
  */
-const PM = { devId: null, name: '', presets: [], picked: new Set(), filter: '' };
+const PM = { devId: null, name: '', presets: [], picked: new Set(), filter: '', view: 'unused' };
+
+/** "MM/DD/YY" or bare "MM/DD" as a sortable key; bare dates predate any year. */
+const dateKey = (d) => {
+  const [m, day, y = '00'] = String(d ?? '').split('/');
+  return d ? `${y}${m}${day}` : '999999';
+};
+
+/** Which presets each tab shows. Old is limited to deletable ones: that is the point of it. */
+const PM_VIEWS = {
+  unused: (p) => !p.usedBy.length,
+  old: (p) => p.old && !p.usedBy.length,
+  all: () => true,
+};
 
 async function openPresets(devId) {
   if (!devId) return;
+  if (devId !== PM.devId) PM.view = 'unused';
   PM.devId = devId; PM.picked = new Set(); PM.filter = '';
   $('pmFilter').value = '';
   PM.name = S.devices.find((d) => d.id === devId)?.name ?? devId;
@@ -478,26 +507,43 @@ async function openPresets(devId) {
     const r = await api(`/api/preset-usage/${encodeURIComponent(devId)}`);
     PM.presets = r.presets.sort((a, b) => (a.usedBy.length > 0) - (b.usedBy.length > 0) || a.name.localeCompare(b.name));
     PM.storage = r.storage;
+    PM.minYear = r.minYear;
     renderPresets();
   } catch (e) {
     $('pmList').innerHTML = `<div class="bl-empty">${esc(e.message)}</div>`;
   }
 }
 
-function renderPresets() {
+/** The rows the current tab and search show. */
+function shownPresets() {
   const f = PM.filter.toLowerCase();
-  const rows = PM.presets.filter((p) => !f || p.name.toLowerCase().includes(f) || String(p.id) === f);
+  const rows = PM.presets
+    .filter(PM_VIEWS[PM.view])
+    .filter((p) => !f || p.name.toLowerCase().includes(f) || String(p.id) === f);
+  // Oldest first on the Old tab, so the most obviously stale is at the top.
+  return PM.view === 'old' ? rows.sort((a, b) => dateKey(a.date).localeCompare(dateKey(b.date))) : rows;
+}
+
+function renderPresets() {
+  for (const t of document.querySelectorAll('.pm-tab')) {
+    t.classList.toggle('active', t.dataset.view === PM.view);
+    const n = PM.presets.filter(PM_VIEWS[t.dataset.view]).length;
+    t.textContent = `${{ unused: 'Not in any song', old: 'Old', all: 'All' }[t.dataset.view]} (${n})`;
+  }
+  const rows = shownPresets();
   $('pmList').innerHTML = rows.length ? rows.map((p) => {
     const locked = p.usedBy.length > 0;
     const why = locked
       ? `used by ${p.usedBy.slice(0, 2).map(esc).join(', ')}${p.usedBy.length > 2 ? ` +${p.usedBy.length - 2}` : ''}`
-      : 'not in any song';
+      : p.old ? `old · ${esc(p.date)}` : 'not in any song';
     return `<label class="bl-row${locked ? ' locked' : ''}">
       <input type="checkbox" data-pm="${p.id}" ${locked ? 'disabled' : ''} ${PM.picked.has(p.id) ? 'checked' : ''} />
       <span class="bl-name">${esc(p.name || '(unnamed)')} <span class="bl-why">#${p.id}</span></span>
       <span class="bl-why">${why}</span>
     </label>`;
-  }).join('') : '<div class="bl-empty">No presets match.</div>';
+  }).join('') : `<div class="bl-empty">${PM.view === 'old'
+    ? `No unused presets dated before 20${PM.minYear ?? '??'}.`
+    : 'No presets match.'}</div>`;
 
   const unused = PM.presets.filter((p) => !p.usedBy.length).length;
   const fs = PM.storage;
@@ -517,10 +563,14 @@ $('pmList').addEventListener('change', (e) => {
   if (e.target.checked) PM.picked.add(id); else PM.picked.delete(id);
   renderPresets();
 });
-$('pmSelectUnused').addEventListener('click', () => {
-  const all = PM.presets.filter((p) => !p.usedBy.length).map((p) => p.id);
-  // A second press clears, so it doubles as "select none".
-  PM.picked = PM.picked.size === all.length ? new Set() : new Set(all);
+for (const t of document.querySelectorAll('.pm-tab')) {
+  t.addEventListener('click', () => { PM.view = t.dataset.view; renderPresets(); });
+}
+$('pmSelectShown').addEventListener('click', () => {
+  const shown = shownPresets().filter((p) => !p.usedBy.length).map((p) => p.id);
+  // A second press clears them, so it doubles as "select none".
+  const allPicked = shown.length && shown.every((id) => PM.picked.has(id));
+  for (const id of shown) allPicked ? PM.picked.delete(id) : PM.picked.add(id);
   renderPresets();
 });
 $('pmDelete').addEventListener('click', async () => {
@@ -1147,11 +1197,28 @@ const closeRequest = () => $('requestPanel').classList.add('hidden');
  *             is reporting a problem rather than asking for a feature, and
  *             having to set that themselves is a step they should not need.
  */
+const BROKEN_KIND = 'Something is broken';
+
+/** Says up front that a fault report includes a snapshot, so nobody is surprised. */
+const syncRequestNote = () =>
+  $('reqDiagNote').classList.toggle('hidden', $('reqKind').value !== BROKEN_KIND);
+
 function openRequest(kind = null) {
   if (kind) $('reqKind').value = kind;
+  syncRequestNote();
   $('requestPanel').classList.remove('hidden');
   $('reqBody').focus();
 }
+$('reqKind').addEventListener('change', syncRequestNote);
+
+/** The browser's side of a fault report: what was on screen and what it said. */
+const clientDiagnostics = () => ({
+  userAgent: navigator.userAgent,
+  viewport: `${innerWidth}x${innerHeight}`,
+  designer: { open: ST.open, editingId: ST.editingId, live: ST.liveOut, selected: ST.sel },
+  toasts: RECENT.toasts.slice(),
+  errors: RECENT.errors.slice(),
+});
 
 $('btnRequest').addEventListener('click', () => openRequest());
 $('reqClose').addEventListener('click', closeRequest);
@@ -1174,7 +1241,11 @@ $('reqSend').addEventListener('click', async () => {
   try {
     const r = await api('/api/request', {
       method: 'POST',
-      body: JSON.stringify({ kind: $('reqKind').value, detail }),
+      body: JSON.stringify({
+        kind: $('reqKind').value,
+        detail,
+        ...($('reqKind').value === BROKEN_KIND ? { client: clientDiagnostics() } : {}),
+      }),
     });
     $('reqBody').value = '';
     closeRequest();

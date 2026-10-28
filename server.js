@@ -14,11 +14,31 @@ import http from 'node:http';
 import https from 'node:https';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import * as wled from './lib/wled.js';
 import * as store from './lib/store.js';
 import { buildScenes, normalize, extractDate } from './lib/match.js';
 import { captureScene } from './lib/capture.js';
 import * as updater from './lib/update.js';
+
+/**
+ * The last few hundred lines of console output, for bug reports.
+ *
+ * The app runs hidden at sign-in, so nobody ever sees its console -- yet that
+ * is where reconciler repairs, reboots and failed saves are reported. Keeping
+ * a copy lets a report say what the app had been doing in the minutes before.
+ */
+const LOG_LINES = 300;
+const recentLog = [];
+for (const level of ['log', 'warn', 'error']) {
+  const original = console[level].bind(console);
+  console[level] = (...args) => {
+    const line = args.map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : JSON.stringify(a))).join(' ');
+    recentLog.push(`${new Date().toISOString()} ${level === 'log' ? '' : `[${level}] `}${line.trim()}`);
+    if (recentLog.length > LOG_LINES) recentLog.shift();
+    original(...args);
+  };
+}
 
 const PORT = Number(process.env.PORT || 8420);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -44,7 +64,7 @@ const REPO = { owner: 'Murpful', repo: 'lightsapp', branch: 'main' };
  * The URL is a secret. It lives in data/ (gitignored), is never sent to the
  * browser, and is kept out of error messages.
  */
-function postToDiscord(webhook, { kind, detail, version }) {
+function postToDiscord(webhook, { kind, detail, version, attachment = null }) {
   return new Promise((resolve, reject) => {
     let url;
     try {
@@ -56,7 +76,7 @@ function postToDiscord(webhook, { kind, detail, version }) {
       return reject(new Error('that is not a Discord webhook address'));
     }
 
-    const payload = JSON.stringify({
+    const json = JSON.stringify({
       username: 'LightsApp',
       embeds: [{
         title: kind,
@@ -68,13 +88,31 @@ function postToDiscord(webhook, { kind, detail, version }) {
       }],
     });
 
+    // With an attachment the webhook takes multipart: the message as
+    // payload_json, the file as files[0]. Diagnostics are far too big for an
+    // embed, and a file keeps them readable as JSON.
+    let payload = json;
+    let type = 'application/json';
+    if (attachment) {
+      const boundary = `lightsapp${Date.now().toString(36)}`;
+      payload = Buffer.concat([
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\n`
+          + `Content-Type: application/json\r\n\r\n${json}\r\n`),
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="${attachment.name}"\r\n`
+          + `Content-Type: application/json\r\n\r\n`),
+        Buffer.from(attachment.content),
+        Buffer.from(`\r\n--${boundary}--\r\n`),
+      ]);
+      type = `multipart/form-data; boundary=${boundary}`;
+    }
+
     const req = https.request({
       hostname: url.hostname,
       path: url.pathname + url.search,
       method: 'POST',
       headers: {
         'User-Agent': 'LightsApp',
-        'Content-Type': 'application/json',
+        'Content-Type': type,
         'Content-Length': Buffer.byteLength(payload),
       },
       timeout: 20000,
@@ -932,6 +970,113 @@ function startReconciler() {
   console.log(`  reconciler on, every ${every / 1000}s`);
 }
 
+/* ------------------------------------------------------------ diagnostics */
+
+/**
+ * Everything worth knowing about the rig and the app at the moment a problem
+ * is reported, so a bug report can be traced without being at the booth.
+ *
+ * Read-only: the drift check is a dry run, and nothing here writes to a
+ * controller. Secrets (the Discord webhook) are deliberately never included.
+ * `client` is what the browser adds -- recent messages and errors it showed.
+ */
+async function buildDiagnostics(client = {}) {
+  const live = await pollStatus();
+  const drift = await reconcileOnce({ dryRun: true }).catch((e) => ({ error: e.message }));
+  const active = state.scenes.find((s) => s.id === state.activeSceneId) ?? null;
+  const queued = state.queue.items[state.queue.position];
+
+  const controllers = state.devices.map((dev) => {
+    const st = live.find((l) => l.id === dev.id) ?? {};
+    const cached = state.presets[dev.id] ?? {};
+    return {
+      id: dev.id, name: dev.name, host: dev.host,
+      online: Boolean(st.online), on: st.on, bri: st.bri,
+      ps: st.ps, psName: cached[String(st.ps)]?.n ?? null,
+      fx: st.fx, pal: st.pal, col0: st.colors?.[0] ?? null,
+      uptimeSec: st.uptime ?? null,
+      storage: state.storage[dev.id] ?? null,
+      saveFailed: state.saveFailed[dev.id] ?? null,
+      presetsCached: Object.keys(cached).filter((k) => Number(k) > 0).length,
+      repairStreak: state.repairStreak[dev.id] ?? 0,
+      editHoldMs: Math.max(0, (state.editHold[dev.id] ?? 0) - Date.now()),
+    };
+  });
+
+  // The two song-data faults behind stuck fixtures: several songs pointing at
+  // one preset slot, and songs pointing at a preset the controller lacks.
+  const sharedSlots = {};
+  const missingPresets = [];
+  for (const dev of state.devices) {
+    const bySlot = new Map();
+    for (const s of state.scenes) {
+      const e = s.entries?.[dev.id];
+      if (typeof e !== 'number') continue;
+      if (!bySlot.has(e)) bySlot.set(e, []);
+      bySlot.get(e).push(s.title ?? s.name ?? s.id);
+      if (state.presets[dev.id] && !state.presets[dev.id][String(e)]) {
+        missingPresets.push({ devId: dev.id, slot: e, song: s.title ?? s.name ?? s.id });
+      }
+    }
+    const shared = [...bySlot].filter(([, songs]) => songs.length > 1);
+    if (shared.length) sharedSlots[dev.id] = Object.fromEntries(shared);
+  }
+
+  const bySource = {};
+  for (const s of state.scenes) bySource[s.source ?? 'unknown'] = (bySource[s.source ?? 'unknown'] ?? 0) + 1;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    app: {
+      version: (await updater.localVersion()).version,
+      uptimeSec: Math.round(process.uptime()),
+      node: process.version,
+      os: `${os.type()} ${os.release()}`,
+    },
+    activeScene: active && { id: active.id, title: active.title ?? active.name, source: active.source, entries: active.entries },
+    queue: { position: state.queue.position, length: state.queue.items.length, current: queued?.sceneId ?? null },
+    reconcile: { ...state.reconcile, firing: state.firing },
+    drift,
+    controllers,
+    sharedSlots,
+    missingPresets,
+    songs: { total: state.scenes.length, archived: state.scenes.filter((s) => s.archived).length, bySource },
+    client,
+    log: recentLog.slice(),
+  };
+}
+
+/** The request kind that means "something is broken"; it gets a snapshot. */
+const BROKEN_KIND = 'Something is broken';
+const DIAG_DIR = path.join(process.cwd(), 'data', 'diagnostics');
+
+/**
+ * A few lines a person can read in Discord without opening the file: only what
+ * looks wrong, so a healthy rig produces almost nothing here.
+ */
+function diagnosticsSummary(d) {
+  const lines = [];
+  lines.push(`Playing: ${d.activeScene?.title ?? 'nothing'}`);
+  for (const c of d.controllers) {
+    const bits = [];
+    if (!c.online) bits.push('offline');
+    if (c.saveFailed) bits.push('last save failed');
+    if (c.storage?.totalKB && c.storage.usedKB / c.storage.totalKB >= 0.9) {
+      bits.push(`storage ${Math.round((c.storage.usedKB / c.storage.totalKB) * 100)}%`);
+    }
+    if (c.repairStreak) bits.push(`repaired ${c.repairStreak}x`);
+    if (bits.length) lines.push(`${c.name}: ${bits.join(', ')}`);
+  }
+  const drifted = d.drift?.drifted?.map((x) => x.devId) ?? [];
+  if (drifted.length) lines.push(`Not showing the song: ${drifted.join(', ')}`);
+  for (const [devId, slots] of Object.entries(d.sharedSlots)) {
+    lines.push(`${devId}: ${Object.keys(slots).length} preset slot(s) shared by several songs`);
+  }
+  if (d.missingPresets.length) lines.push(`${d.missingPresets.length} song entr(ies) point at a missing preset`);
+  if (d.client?.errors?.length) lines.push(`${d.client.errors.length} browser error(s)`);
+  return lines.map((l) => `• ${l}`).join('\n');
+}
+
 /* -------------------------------------------------------------------- http */
 
 const json = (res, code, obj) => {
@@ -1607,9 +1752,18 @@ async function handleApi(req, res, url) {
     state.presets[dev.id] = presets;
     const usage = presetUsage(dev.id);
     const list = Object.entries(presets)
-      .map(([id, v]) => ({ id: Number(id), name: v?.n ?? '', usedBy: usage.get(Number(id)) ?? [] }))
+      .map(([id, v]) => {
+        const name = v?.n ?? '';
+        const date = extractDate(name);
+        // "Old" is the library's own cutoff: anything dated before MIN_YEAR, and
+        // bare M/D dates, which carry no year because they predate the habit.
+        // Undated names are never called old -- there is no telling.
+        return { id: Number(id), name, date, old: Boolean(date) && !isRecentDate(date), usedBy: usage.get(Number(id)) ?? [] };
+      })
       .filter((x) => x.id > 0);
-    return json(res, 200, { devId: dev.id, name: dev.name, storage: state.storage[dev.id] ?? null, presets: list });
+    return json(res, 200, {
+      devId: dev.id, name: dev.name, storage: state.storage[dev.id] ?? null, minYear: MIN_YEAR, presets: list,
+    });
   }
 
   /**
@@ -1786,7 +1940,7 @@ async function handleApi(req, res, url) {
    * Discord is a bonus on top of it.
    */
   if (method === 'POST' && p === '/api/request') {
-    const { kind, detail } = await readBody(req);
+    const { kind, detail, client } = await readBody(req);
     const text = String(detail ?? '').trim();
     if (!text) return json(res, 400, { error: 'say what you need first' });
 
@@ -1799,6 +1953,27 @@ async function handleApi(req, res, url) {
       version,
       posted: null,
     };
+
+    // A fault report carries a snapshot of the rig, taken now while the
+    // problem is (hopefully) still showing. Kept in its own file rather than
+    // in requests.json, which would otherwise balloon with every report.
+    let attachment = null;
+    let summary = '';
+    if (entry.kind === BROKEN_KIND) {
+      try {
+        const diag = await buildDiagnostics(client && typeof client === 'object' ? client : {});
+        const content = JSON.stringify(diag, null, 2);
+        await mkdir(DIAG_DIR, { recursive: true });
+        await writeFile(path.join(DIAG_DIR, `${entry.id}.json`), content, 'utf8');
+        entry.diagnostics = `data/diagnostics/${entry.id}.json`;
+        attachment = { name: `${entry.id}-diagnostics.json`, content };
+        summary = diagnosticsSummary(diag);
+      } catch (e) {
+        // A report must never be lost because the snapshot failed.
+        entry.diagnosticsError = e.message;
+      }
+    }
+    const posted = summary ? `${text}\n\n**Snapshot**\n${summary}` : text;
 
     const log = await store.load('requests', null) ?? [];
     log.unshift(entry);
@@ -1813,7 +1988,7 @@ async function handleApi(req, res, url) {
     }
 
     try {
-      await postToDiscord(cfg.discordWebhook, { kind: entry.kind, detail: text, version });
+      await postToDiscord(cfg.discordWebhook, { kind: entry.kind, detail: posted, version, attachment });
       entry.posted = new Date().toISOString();
       await store.save('requests', log);
       return json(res, 200, { ok: true, saved: true, sent: true });
