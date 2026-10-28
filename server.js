@@ -659,6 +659,35 @@ function nextFreeSlot(devId, reserve = false) {
 /** Forget this device's reservations; its real presets are now known. */
 const clearReservations = (devId) => { delete state.reserved[devId]; };
 
+/**
+ * Saves the controller's current look into `slot` and confirms it was stored.
+ *
+ * WLED answers a psave with success before it writes anything, and if the write
+ * then fails -- most often because the controller's preset storage is full --
+ * nothing says so. Trusting that answer recorded the slot as the song's preset
+ * when it did not exist: the slot still read as free, so every later song was
+ * handed the very same empty slot, and firing any of them loaded nothing. The
+ * fixture simply stayed on whatever look it had first, song after song.
+ *
+ * So read the presets back until the slot carries our name. The write is
+ * deferred to the controller's main loop, hence the short retry. Throws if it
+ * never appears; on success the preset cache is refreshed for that device.
+ */
+async function savePresetConfirmed(dev, slot, name) {
+  await wled.savePreset(dev.host, slot, name);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await new Promise((r) => setTimeout(r, 300 + attempt * 200));
+    let presets;
+    try { presets = await wled.getPresets(dev.host); } catch { continue; }
+    if (presets?.[String(slot)]?.n === name) {
+      state.presets[dev.id] = presets;
+      clearReservations(dev.id);
+      return;
+    }
+  }
+  throw new Error(`${dev.name} did not store preset ${slot} -- its preset storage may be full`);
+}
+
 async function pollStatus() {
   const results = await Promise.allSettled(
     state.devices.map(async (dev) => {
@@ -1087,7 +1116,7 @@ async function handleApi(req, res, url) {
                 bri: d.bri ?? 255,
                 seg: [{ id: 0, fx: d.fx ?? 0, pal: d.pal ?? 0, col: d.col ?? [], sx: d.sx ?? 128, ix: d.ix ?? 128 }],
               });
-          await wled.savePreset(dev.host, slot, name);
+          await savePresetConfirmed(dev, slot, name);
           return { devId, slot, ok: true };
         } catch (e) {
           return { devId, slot, ok: false, error: e.message };
@@ -1112,9 +1141,6 @@ async function handleApi(req, res, url) {
     state.scenes.push(scene);
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.ok)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1175,7 +1201,7 @@ async function handleApi(req, res, url) {
                 bri: d.bri ?? 255,
                 seg: [{ id: 0, fx: d.fx ?? 0, pal: d.pal ?? 0, col: d.col ?? [], sx: d.sx ?? 128, ix: d.ix ?? 128 }],
               });
-          await wled.savePreset(dev.host, slot, name);
+          await savePresetConfirmed(dev, slot, name);
           return { devId, slot, ok: true, reused: typeof existing === 'number' };
         } catch (e) {
           return { devId, slot, ok: false, error: e.message };
@@ -1188,9 +1214,6 @@ async function handleApi(req, res, url) {
     scene.name = name;
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.ok && x.slot != null)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1226,7 +1249,7 @@ async function handleApi(req, res, url) {
       const slot = await nextFreeSlotLive(dev.id);
       if (slot == null) { saved.push({ devId: dev.id, ok: false, error: 'could not read controller for a free slot' }); continue; }
       try {
-        await wled.savePreset(dev.host, slot, name);
+        await savePresetConfirmed(dev, slot, name);
         scene.entries[dev.id] = slot;
         saved.push({ devId: dev.id, slot, created: true, ok: true });
       } catch (e) {
@@ -1244,9 +1267,6 @@ async function handleApi(req, res, url) {
     scene.id = `song-${Date.now().toString(36)}-${scene.id.slice(0, 8)}`;
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.created)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1528,9 +1548,7 @@ async function handleApi(req, res, url) {
     if (slot == null) return json(res, 409, { error: 'could not read controller for a free slot' });
     invalidateCaptures();
     try {
-      await wled.savePreset(dev.host, slot, label);
-      state.presets[devId] = await wled.getPresets(dev.host);
-      clearReservations(devId);
+      await savePresetConfirmed(dev, slot, label);
       await store.save('presets.cache', state.presets);
       return json(res, 200, { devId, slot, name: label });
     } catch (e) {

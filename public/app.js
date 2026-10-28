@@ -2262,7 +2262,7 @@ $('stSave').addEventListener('click', async () => {
       if (ST.open) btn.textContent = ST.editingId ? 'Save changes' : label;
     }, 1800);
 
-    if (failed.length) toast(`"${title}" saved, but ${failed.length} controller(s) failed`, true);
+    if (failed.length) toast(`"${title}" saved, but not on ${failed.map((s) => s.error ?? s.devId).join('; ')}`, true);
     else if (editing) toast(`Updated "${title}"`);
     else toast(`Created "${title}" → ${r.saved.filter((s) => s.ok).map((s) => `${s.devId}#${s.slot}`).join(' ')}`);
 
