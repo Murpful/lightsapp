@@ -1,5 +1,5 @@
 {
-  "version": "1.2.2",
-  "released": "2026-09-03",
-  "notes": "Correct copyright holder, and the offline page now works out its own install folder instead of naming one machine."
+  "version": "1.2.3",
+  "released": "2026-10-28",
+  "notes": "Fixes the reported bug where the drums stuck on the first look and ignored what later songs were programmed for. A controller whose preset storage is full drops saves without saying so; songs are now checked after saving, and a warning stays on screen when a controller is nearly full or did not take a song. Each controller's Presets button lists presets that are unused or old and deletes them in a couple of taps (backed up first). Reports filed as \"Something is broken\" now include a snapshot of the rig so the problem can be traced."
 }

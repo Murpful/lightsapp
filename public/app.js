@@ -37,7 +37,22 @@ async function api(path, opts = {}) {
 }
 
 let toastTimer;
+/**
+ * What the operator has been shown recently, for bug reports.
+ * Toasts are how every failure is reported, and they are gone in seconds --
+ * so by the time someone writes "it said something about the drums", this is
+ * the only record of what it actually said.
+ */
+const RECENT = { toasts: [], errors: [] };
+const remember = (list, item, max = 40) => {
+  list.push({ at: new Date().toISOString(), ...item });
+  if (list.length > max) list.shift();
+};
+window.addEventListener('error', (e) => remember(RECENT.errors, { message: e.message, where: `${e.filename}:${e.lineno}` }));
+window.addEventListener('unhandledrejection', (e) => remember(RECENT.errors, { message: String(e.reason?.message ?? e.reason) }));
+
 function toast(msg, isErr = false) {
+  remember(RECENT.toasts, { msg, isErr });
   const el = $('toast');
   el.textContent = msg;
   el.className = `toast show${isErr ? ' err' : ''}`;
@@ -112,6 +127,9 @@ setInterval(() => {
 
 /* ------------------------------------------------------------------ render */
 
+/** Storage use at which a controller is flagged as at risk of dropping saves. */
+const STORAGE_WARN_AT = 0.9;
+
 function renderDevices() {
   $('devStrip').innerHTML = S.devices
     .map((d) => {
@@ -135,12 +153,18 @@ function renderDevices() {
       const label = st.ps > 0 ? (p?.name ?? `preset ${st.ps}`) : 'live / unsaved';
       const grad = gradientOf({ col: st.colors });
       const pct = Math.round((st.bri / 255) * 100);
+      const full = st.storage?.totalKB ? st.storage.usedKB / st.storage.totalKB : null;
+      const storageWarn = Boolean(st.saveFailed) || (full ?? 0) >= STORAGE_WARN_AT;
       return `<div class="dev">
         <div class="dev-top">
           <span class="dev-name">${esc(d.name)}</span>
           <span class="dev-meta">${st.on ? `${pct}%` : 'off'}</span>
         </div>
-        <div class="dev-meta">${esc(label)}</div>
+        <div class="dev-top">
+          <span class="dev-meta">${esc(label)}</span>
+          <button class="mini dev-presets${storageWarn ? ' warn' : ''}" data-presets="${esc(d.id)}"
+            title="See and delete this controller's presets">Presets${full != null ? ` · ${Math.round(full * 100)}% full` : ''}</button>
+        </div>
         <div class="dev-bar" style="background:${grad};opacity:${st.on ? 1 : 0.25}"></div>
       </div>`;
     })
@@ -402,8 +426,177 @@ async function refreshStatus() {
   try {
     S.status = await api('/api/status');
     renderDevices();
+    renderStorageWarning();
   } catch { /* transient network blip; keep the last known state on screen */ }
 }
+
+/**
+ * Warns while any controller cannot be trusted to keep a new song.
+ *
+ * A controller with full preset storage accepts a save and quietly drops it,
+ * so the song plays everywhere except there -- that fixture just stays on its
+ * last look. A toast is gone in seconds, so this stays up until the problem is
+ * cleared, or until dismissed for this particular set of problems.
+ */
+let storageDismissed = '';
+
+function renderStorageWarning() {
+  const issues = [];
+  for (const st of S.status ?? []) {
+    const label = S.devices.find((d) => d.id === st.id)?.name ?? st.id;
+    const fs = st.storage;
+    const pct = fs?.totalKB ? fs.usedKB / fs.totalKB : 0;
+    if (st.saveFailed) issues.push({ id: st.id, text: `${label}: the last song did not save to it` });
+    else if (pct >= STORAGE_WARN_AT) issues.push({ id: st.id, text: `${label}: preset storage ${Math.round(pct * 100)}% full` });
+  }
+  const key = issues.map((i) => i.text).join('|');
+  const bar = $('storageBar');
+  if (!issues.length || key === storageDismissed) return bar.classList.add('hidden');
+
+  $('storageTitle').textContent = issues.length === 1
+    ? `${issues[0].text}`
+    : `Preset storage problems on ${issues.length} controllers`;
+  $('storageNotes').textContent = (issues.length > 1 ? `${issues.map((i) => i.text).join(' · ')}. ` : '')
+    + 'New songs may not stick on it, so it stays on its previous look. '
+    + 'Use Free up space to delete presets no song uses, then re-save the affected songs.';
+  bar.dataset.key = key;
+  bar.dataset.dev = issues[0].id;
+  bar.classList.remove('hidden');
+}
+
+$('storageFree').addEventListener('click', () => openPresets($('storageBar').dataset.dev));
+$('deviceCards').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-presets]');
+  if (btn) openPresets(btn.dataset.presets);
+});
+
+/* ------------------------------------------------------ preset cleanup */
+
+/**
+ * Lets the operator delete presets from one controller to free its storage.
+ *
+ * Only presets no song uses can be ticked; the server re-checks that itself and
+ * backs the controller up before deleting anything.
+ */
+const PM = { devId: null, name: '', presets: [], picked: new Set(), filter: '', view: 'unused' };
+
+/** "MM/DD/YY" or bare "MM/DD" as a sortable key; bare dates predate any year. */
+const dateKey = (d) => {
+  const [m, day, y = '00'] = String(d ?? '').split('/');
+  return d ? `${y}${m}${day}` : '999999';
+};
+
+/** Which presets each tab shows. Old is limited to deletable ones: that is the point of it. */
+const PM_VIEWS = {
+  unused: (p) => !p.usedBy.length,
+  old: (p) => p.old && !p.usedBy.length,
+  all: () => true,
+};
+
+async function openPresets(devId) {
+  if (!devId) return;
+  if (devId !== PM.devId) PM.view = 'unused';
+  PM.devId = devId; PM.picked = new Set(); PM.filter = '';
+  $('pmFilter').value = '';
+  PM.name = S.devices.find((d) => d.id === devId)?.name ?? devId;
+  $('pmTitle').textContent = `Presets on ${PM.name}`;
+  $('pmList').innerHTML = '<div class="bl-empty">Reading the controller&hellip;</div>';
+  $('pmSummary').textContent = '';
+  $('presetPanel').classList.remove('hidden');
+  try {
+    const r = await api(`/api/preset-usage/${encodeURIComponent(devId)}`);
+    PM.presets = r.presets.sort((a, b) => (a.usedBy.length > 0) - (b.usedBy.length > 0) || a.name.localeCompare(b.name));
+    PM.storage = r.storage;
+    PM.minYear = r.minYear;
+    renderPresets();
+  } catch (e) {
+    $('pmList').innerHTML = `<div class="bl-empty">${esc(e.message)}</div>`;
+  }
+}
+
+/** The rows the current tab and search show. */
+function shownPresets() {
+  const f = PM.filter.toLowerCase();
+  const rows = PM.presets
+    .filter(PM_VIEWS[PM.view])
+    .filter((p) => !f || p.name.toLowerCase().includes(f) || String(p.id) === f);
+  // Oldest first on the Old tab, so the most obviously stale is at the top.
+  return PM.view === 'old' ? rows.sort((a, b) => dateKey(a.date).localeCompare(dateKey(b.date))) : rows;
+}
+
+function renderPresets() {
+  for (const t of document.querySelectorAll('.pm-tab')) {
+    t.classList.toggle('active', t.dataset.view === PM.view);
+    const n = PM.presets.filter(PM_VIEWS[t.dataset.view]).length;
+    t.textContent = `${{ unused: 'Not in any song', old: 'Old', all: 'All' }[t.dataset.view]} (${n})`;
+  }
+  const rows = shownPresets();
+  $('pmList').innerHTML = rows.length ? rows.map((p) => {
+    const locked = p.usedBy.length > 0;
+    const why = locked
+      ? `used by ${p.usedBy.slice(0, 2).map(esc).join(', ')}${p.usedBy.length > 2 ? ` +${p.usedBy.length - 2}` : ''}`
+      : p.old ? `old · ${esc(p.date)}` : 'not in any song';
+    return `<label class="bl-row${locked ? ' locked' : ''}">
+      <input type="checkbox" data-pm="${p.id}" ${locked ? 'disabled' : ''} ${PM.picked.has(p.id) ? 'checked' : ''} />
+      <span class="bl-name">${esc(p.name || '(unnamed)')} <span class="bl-why">#${p.id}</span></span>
+      <span class="bl-why">${why}</span>
+    </label>`;
+  }).join('') : `<div class="bl-empty">${PM.view === 'old'
+    ? `No unused presets dated before 20${PM.minYear ?? '??'}.`
+    : 'No presets match.'}</div>`;
+
+  const unused = PM.presets.filter((p) => !p.usedBy.length).length;
+  const fs = PM.storage;
+  $('pmSummary').textContent = `${PM.presets.length} presets, ${unused} not in any song`
+    + (fs?.totalKB ? ` · storage ${Math.round((fs.usedKB / fs.totalKB) * 100)}% full` : '');
+  $('pmDelete').disabled = !PM.picked.size;
+  $('pmDelete').textContent = PM.picked.size ? `Delete ${PM.picked.size} selected` : 'Delete selected';
+}
+
+const closePresets = () => $('presetPanel').classList.add('hidden');
+$('pmClose').addEventListener('click', closePresets);
+$('presetPanel').addEventListener('click', (e) => { if (e.target.id === 'presetPanel') closePresets(); });
+$('pmFilter').addEventListener('input', (e) => { PM.filter = e.target.value.trim(); renderPresets(); });
+$('pmList').addEventListener('change', (e) => {
+  const id = Number(e.target.dataset.pm);
+  if (!id) return;
+  if (e.target.checked) PM.picked.add(id); else PM.picked.delete(id);
+  renderPresets();
+});
+for (const t of document.querySelectorAll('.pm-tab')) {
+  t.addEventListener('click', () => { PM.view = t.dataset.view; renderPresets(); });
+}
+$('pmSelectShown').addEventListener('click', () => {
+  const shown = shownPresets().filter((p) => !p.usedBy.length).map((p) => p.id);
+  // A second press clears them, so it doubles as "select none".
+  const allPicked = shown.length && shown.every((id) => PM.picked.has(id));
+  for (const id of shown) allPicked ? PM.picked.delete(id) : PM.picked.add(id);
+  renderPresets();
+});
+$('pmDelete').addEventListener('click', async () => {
+  const n = PM.picked.size;
+  if (!n) return;
+  if (!confirm(`Delete ${n} preset${n === 1 ? '' : 's'} from ${PM.name}?\n\nNo song uses them. A backup of every preset on ${PM.name} is saved first.`)) return;
+  const btn = $('pmDelete');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const r = await api('/api/presets/delete', { method: 'POST', body: JSON.stringify({ devId: PM.devId, ids: [...PM.picked] }) });
+    toast(r.failed.length
+      ? `Deleted ${r.deleted.length}; ${r.failed.length} did not go — try again`
+      : `Deleted ${r.deleted.length} preset${r.deleted.length === 1 ? '' : 's'} from ${PM.name}`, r.failed.length > 0);
+    await init(false);
+    refreshStatus();
+    await openPresets(PM.devId);
+  } catch (e) {
+    toast(e.message, true);
+    renderPresets();
+  }
+});
+
+$('storageDismiss').addEventListener('click', () => {
+  storageDismissed = $('storageBar').dataset.key ?? '';
+  $('storageBar').classList.add('hidden');
+});
 
 /* ------------------------------------------------------- auto generator */
 
@@ -1004,11 +1197,28 @@ const closeRequest = () => $('requestPanel').classList.add('hidden');
  *             is reporting a problem rather than asking for a feature, and
  *             having to set that themselves is a step they should not need.
  */
+const BROKEN_KIND = 'Something is broken';
+
+/** Says up front that a fault report includes a snapshot, so nobody is surprised. */
+const syncRequestNote = () =>
+  $('reqDiagNote').classList.toggle('hidden', $('reqKind').value !== BROKEN_KIND);
+
 function openRequest(kind = null) {
   if (kind) $('reqKind').value = kind;
+  syncRequestNote();
   $('requestPanel').classList.remove('hidden');
   $('reqBody').focus();
 }
+$('reqKind').addEventListener('change', syncRequestNote);
+
+/** The browser's side of a fault report: what was on screen and what it said. */
+const clientDiagnostics = () => ({
+  userAgent: navigator.userAgent,
+  viewport: `${innerWidth}x${innerHeight}`,
+  designer: { open: ST.open, editingId: ST.editingId, live: ST.liveOut, selected: ST.sel },
+  toasts: RECENT.toasts.slice(),
+  errors: RECENT.errors.slice(),
+});
 
 $('btnRequest').addEventListener('click', () => openRequest());
 $('reqClose').addEventListener('click', closeRequest);
@@ -1031,7 +1241,11 @@ $('reqSend').addEventListener('click', async () => {
   try {
     const r = await api('/api/request', {
       method: 'POST',
-      body: JSON.stringify({ kind: $('reqKind').value, detail }),
+      body: JSON.stringify({
+        kind: $('reqKind').value,
+        detail,
+        ...($('reqKind').value === BROKEN_KIND ? { client: clientDiagnostics() } : {}),
+      }),
     });
     $('reqBody').value = '';
     closeRequest();
@@ -1373,7 +1587,8 @@ const anyModalOpen = () =>
   !$('hiddenPanel').classList.contains('hidden') ||
   !$('requestPanel').classList.contains('hidden') ||
   !$('aboutPanel').classList.contains('hidden') ||
-  !$('helpPanel').classList.contains('hidden');
+  !$('helpPanel').classList.contains('hidden') ||
+  !$('presetPanel').classList.contains('hidden');
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
@@ -1382,6 +1597,7 @@ document.addEventListener('keydown', (e) => {
     if (!$('requestPanel').classList.contains('hidden')) return closeRequest();
     if (!$('hiddenPanel').classList.contains('hidden')) return closeHidden();
     if (!$('helpPanel').classList.contains('hidden')) return closeHelp();
+    if (!$('presetPanel').classList.contains('hidden')) return closePresets();
     if (ST.open) return closeStage();
   }
   // Never let a shortcut fire the lights while a dialog or a field has focus.
@@ -2262,7 +2478,7 @@ $('stSave').addEventListener('click', async () => {
       if (ST.open) btn.textContent = ST.editingId ? 'Save changes' : label;
     }, 1800);
 
-    if (failed.length) toast(`"${title}" saved, but ${failed.length} controller(s) failed`, true);
+    if (failed.length) toast(`"${title}" saved, but not on ${failed.map((s) => s.error ?? s.devId).join('; ')}`, true);
     else if (editing) toast(`Updated "${title}"`);
     else toast(`Created "${title}" → ${r.saved.filter((s) => s.ok).map((s) => `${s.devId}#${s.slot}`).join(' ')}`);
 
@@ -2271,6 +2487,7 @@ $('stSave').addEventListener('click', async () => {
     if (!editing && r.scene?.id) ST.editingId = r.scene.id;
 
     await init(false);
+    if (failed.length) refreshStatus(); // raise the storage warning straight away
   } catch (e) {
     toast(e.message, true);
     btn.disabled = false;

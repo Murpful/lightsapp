@@ -12,13 +12,33 @@
 
 import http from 'node:http';
 import https from 'node:https';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import * as wled from './lib/wled.js';
 import * as store from './lib/store.js';
 import { buildScenes, normalize, extractDate } from './lib/match.js';
 import { captureScene } from './lib/capture.js';
 import * as updater from './lib/update.js';
+
+/**
+ * The last few hundred lines of console output, for bug reports.
+ *
+ * The app runs hidden at sign-in, so nobody ever sees its console -- yet that
+ * is where reconciler repairs, reboots and failed saves are reported. Keeping
+ * a copy lets a report say what the app had been doing in the minutes before.
+ */
+const LOG_LINES = 300;
+const recentLog = [];
+for (const level of ['log', 'warn', 'error']) {
+  const original = console[level].bind(console);
+  console[level] = (...args) => {
+    const line = args.map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : JSON.stringify(a))).join(' ');
+    recentLog.push(`${new Date().toISOString()} ${level === 'log' ? '' : `[${level}] `}${line.trim()}`);
+    if (recentLog.length > LOG_LINES) recentLog.shift();
+    original(...args);
+  };
+}
 
 const PORT = Number(process.env.PORT || 8420);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -44,7 +64,7 @@ const REPO = { owner: 'Murpful', repo: 'lightsapp', branch: 'main' };
  * The URL is a secret. It lives in data/ (gitignored), is never sent to the
  * browser, and is kept out of error messages.
  */
-function postToDiscord(webhook, { kind, detail, version }) {
+function postToDiscord(webhook, { kind, detail, version, attachment = null }) {
   return new Promise((resolve, reject) => {
     let url;
     try {
@@ -56,7 +76,7 @@ function postToDiscord(webhook, { kind, detail, version }) {
       return reject(new Error('that is not a Discord webhook address'));
     }
 
-    const payload = JSON.stringify({
+    const json = JSON.stringify({
       username: 'LightsApp',
       embeds: [{
         title: kind,
@@ -68,13 +88,31 @@ function postToDiscord(webhook, { kind, detail, version }) {
       }],
     });
 
+    // With an attachment the webhook takes multipart: the message as
+    // payload_json, the file as files[0]. Diagnostics are far too big for an
+    // embed, and a file keeps them readable as JSON.
+    let payload = json;
+    let type = 'application/json';
+    if (attachment) {
+      const boundary = `lightsapp${Date.now().toString(36)}`;
+      payload = Buffer.concat([
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\n`
+          + `Content-Type: application/json\r\n\r\n${json}\r\n`),
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="${attachment.name}"\r\n`
+          + `Content-Type: application/json\r\n\r\n`),
+        Buffer.from(attachment.content),
+        Buffer.from(`\r\n--${boundary}--\r\n`),
+      ]);
+      type = `multipart/form-data; boundary=${boundary}`;
+    }
+
     const req = https.request({
       hostname: url.hostname,
       path: url.pathname + url.search,
       method: 'POST',
       headers: {
         'User-Agent': 'LightsApp',
-        'Content-Type': 'application/json',
+        'Content-Type': type,
         'Content-Length': Buffer.byteLength(payload),
       },
       timeout: 20000,
@@ -227,6 +265,8 @@ const state = {
   rigSnapshot: null, // what was on stage when the designer opened, for backing out
   reserved: {},      // devId -> Set of slot numbers claimed but not yet written
   firing: false,     // a scene is mid-flight; the sweep must not talk over it
+  saveFailed: {},    // devId -> why its last preset save never landed
+  storage: {},       // devId -> { usedKB, totalKB } from /json/info
 };
 
 /**
@@ -659,6 +699,62 @@ function nextFreeSlot(devId, reserve = false) {
 /** Forget this device's reservations; its real presets are now known. */
 const clearReservations = (devId) => { delete state.reserved[devId]; };
 
+/**
+ * Saves the controller's current look into `slot` and confirms it was stored.
+ *
+ * WLED answers a psave with success before it writes anything, and if the write
+ * then fails -- most often because the controller's preset storage is full --
+ * nothing says so. Trusting that answer recorded the slot as the song's preset
+ * when it did not exist: the slot still read as free, so every later song was
+ * handed the very same empty slot, and firing any of them loaded nothing. The
+ * fixture simply stayed on whatever look it had first, song after song.
+ *
+ * So read the presets back until the slot carries our name. The write is
+ * deferred to the controller's main loop, hence the short retry. Throws if it
+ * never appears; on success the preset cache is refreshed for that device.
+ */
+async function savePresetConfirmed(dev, slot, name) {
+  await wled.savePreset(dev.host, slot, name);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await new Promise((r) => setTimeout(r, 300 + attempt * 200));
+    let presets;
+    try { presets = await wled.getPresets(dev.host); } catch { continue; }
+    if (presets?.[String(slot)]?.n === name) {
+      state.presets[dev.id] = presets;
+      clearReservations(dev.id);
+      delete state.saveFailed[dev.id];
+      return;
+    }
+  }
+  // Kept until a save to this controller succeeds, so the warning stays on
+  // screen rather than vanishing with the toast.
+  const why = `${dev.name} did not store preset ${slot} -- its preset storage may be full`;
+  state.saveFailed[dev.id] = why;
+  throw new Error(why);
+}
+
+/**
+ * Which songs rely on each preset of one controller.
+ *
+ * Archived songs count: archiving is reversible, and an unarchived song whose
+ * presets had been deleted would fire nothing on that fixture -- exactly the
+ * stuck-fixture symptom this cleanup exists to cure. Mirrors need no special
+ * case: a fixture mirroring this one plays this one's own entry, counted here.
+ */
+function presetUsage(devId) {
+  const usedBy = new Map();
+  for (const scene of state.scenes) {
+    const e = scene.entries?.[devId];
+    if (typeof e !== 'number') continue;
+    if (!usedBy.has(e)) usedBy.set(e, []);
+    usedBy.get(e).push(scene.title ?? scene.name ?? scene.id);
+  }
+  return usedBy;
+}
+
+/** Where a controller's full preset file is kept before the app deletes from it. */
+const PRESET_BACKUP_DIR = path.join(process.cwd(), 'data', 'preset-backups');
+
 async function pollStatus() {
   const results = await Promise.allSettled(
     state.devices.map(async (dev) => {
@@ -673,7 +769,13 @@ async function pollStatus() {
       if (!state.uptimeCheckedAt) state.uptimeCheckedAt = {};
       if ((now - (state.uptimeCheckedAt[dev.id] ?? 0)) > 60000) {
         state.uptimeCheckedAt[dev.id] = now;
-        try { uptime = (await wled.getInfo(dev.host)).uptime ?? uptime; } catch { /* optional */ }
+        try {
+          const info = await wled.getInfo(dev.host);
+          uptime = info.uptime ?? uptime;
+          // Same once-a-minute fetch, so watching storage costs no extra
+          // requests. A full filesystem is what makes preset saves vanish.
+          if (info.fs?.t > 0) state.storage[dev.id] = { usedKB: info.fs.u, totalKB: info.fs.t };
+        } catch { /* optional */ }
       }
       return {
         id: dev.id,
@@ -685,6 +787,8 @@ async function pollStatus() {
         pal: seg.pal,
         colors: seg.col ?? [],
         uptime,
+        storage: state.storage[dev.id] ?? null,
+        saveFailed: state.saveFailed[dev.id] ?? null,
       };
     })
   );
@@ -864,6 +968,113 @@ function startReconciler() {
   }, every);
   reconcileTimer.unref?.();
   console.log(`  reconciler on, every ${every / 1000}s`);
+}
+
+/* ------------------------------------------------------------ diagnostics */
+
+/**
+ * Everything worth knowing about the rig and the app at the moment a problem
+ * is reported, so a bug report can be traced without being at the booth.
+ *
+ * Read-only: the drift check is a dry run, and nothing here writes to a
+ * controller. Secrets (the Discord webhook) are deliberately never included.
+ * `client` is what the browser adds -- recent messages and errors it showed.
+ */
+async function buildDiagnostics(client = {}) {
+  const live = await pollStatus();
+  const drift = await reconcileOnce({ dryRun: true }).catch((e) => ({ error: e.message }));
+  const active = state.scenes.find((s) => s.id === state.activeSceneId) ?? null;
+  const queued = state.queue.items[state.queue.position];
+
+  const controllers = state.devices.map((dev) => {
+    const st = live.find((l) => l.id === dev.id) ?? {};
+    const cached = state.presets[dev.id] ?? {};
+    return {
+      id: dev.id, name: dev.name, host: dev.host,
+      online: Boolean(st.online), on: st.on, bri: st.bri,
+      ps: st.ps, psName: cached[String(st.ps)]?.n ?? null,
+      fx: st.fx, pal: st.pal, col0: st.colors?.[0] ?? null,
+      uptimeSec: st.uptime ?? null,
+      storage: state.storage[dev.id] ?? null,
+      saveFailed: state.saveFailed[dev.id] ?? null,
+      presetsCached: Object.keys(cached).filter((k) => Number(k) > 0).length,
+      repairStreak: state.repairStreak[dev.id] ?? 0,
+      editHoldMs: Math.max(0, (state.editHold[dev.id] ?? 0) - Date.now()),
+    };
+  });
+
+  // The two song-data faults behind stuck fixtures: several songs pointing at
+  // one preset slot, and songs pointing at a preset the controller lacks.
+  const sharedSlots = {};
+  const missingPresets = [];
+  for (const dev of state.devices) {
+    const bySlot = new Map();
+    for (const s of state.scenes) {
+      const e = s.entries?.[dev.id];
+      if (typeof e !== 'number') continue;
+      if (!bySlot.has(e)) bySlot.set(e, []);
+      bySlot.get(e).push(s.title ?? s.name ?? s.id);
+      if (state.presets[dev.id] && !state.presets[dev.id][String(e)]) {
+        missingPresets.push({ devId: dev.id, slot: e, song: s.title ?? s.name ?? s.id });
+      }
+    }
+    const shared = [...bySlot].filter(([, songs]) => songs.length > 1);
+    if (shared.length) sharedSlots[dev.id] = Object.fromEntries(shared);
+  }
+
+  const bySource = {};
+  for (const s of state.scenes) bySource[s.source ?? 'unknown'] = (bySource[s.source ?? 'unknown'] ?? 0) + 1;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    app: {
+      version: (await updater.localVersion()).version,
+      uptimeSec: Math.round(process.uptime()),
+      node: process.version,
+      os: `${os.type()} ${os.release()}`,
+    },
+    activeScene: active && { id: active.id, title: active.title ?? active.name, source: active.source, entries: active.entries },
+    queue: { position: state.queue.position, length: state.queue.items.length, current: queued?.sceneId ?? null },
+    reconcile: { ...state.reconcile, firing: state.firing },
+    drift,
+    controllers,
+    sharedSlots,
+    missingPresets,
+    songs: { total: state.scenes.length, archived: state.scenes.filter((s) => s.archived).length, bySource },
+    client,
+    log: recentLog.slice(),
+  };
+}
+
+/** The request kind that means "something is broken"; it gets a snapshot. */
+const BROKEN_KIND = 'Something is broken';
+const DIAG_DIR = path.join(process.cwd(), 'data', 'diagnostics');
+
+/**
+ * A few lines a person can read in Discord without opening the file: only what
+ * looks wrong, so a healthy rig produces almost nothing here.
+ */
+function diagnosticsSummary(d) {
+  const lines = [];
+  lines.push(`Playing: ${d.activeScene?.title ?? 'nothing'}`);
+  for (const c of d.controllers) {
+    const bits = [];
+    if (!c.online) bits.push('offline');
+    if (c.saveFailed) bits.push('last save failed');
+    if (c.storage?.totalKB && c.storage.usedKB / c.storage.totalKB >= 0.9) {
+      bits.push(`storage ${Math.round((c.storage.usedKB / c.storage.totalKB) * 100)}%`);
+    }
+    if (c.repairStreak) bits.push(`repaired ${c.repairStreak}x`);
+    if (bits.length) lines.push(`${c.name}: ${bits.join(', ')}`);
+  }
+  const drifted = d.drift?.drifted?.map((x) => x.devId) ?? [];
+  if (drifted.length) lines.push(`Not showing the song: ${drifted.join(', ')}`);
+  for (const [devId, slots] of Object.entries(d.sharedSlots)) {
+    lines.push(`${devId}: ${Object.keys(slots).length} preset slot(s) shared by several songs`);
+  }
+  if (d.missingPresets.length) lines.push(`${d.missingPresets.length} song entr(ies) point at a missing preset`);
+  if (d.client?.errors?.length) lines.push(`${d.client.errors.length} browser error(s)`);
+  return lines.map((l) => `• ${l}`).join('\n');
 }
 
 /* -------------------------------------------------------------------- http */
@@ -1087,7 +1298,7 @@ async function handleApi(req, res, url) {
                 bri: d.bri ?? 255,
                 seg: [{ id: 0, fx: d.fx ?? 0, pal: d.pal ?? 0, col: d.col ?? [], sx: d.sx ?? 128, ix: d.ix ?? 128 }],
               });
-          await wled.savePreset(dev.host, slot, name);
+          await savePresetConfirmed(dev, slot, name);
           return { devId, slot, ok: true };
         } catch (e) {
           return { devId, slot, ok: false, error: e.message };
@@ -1112,9 +1323,6 @@ async function handleApi(req, res, url) {
     state.scenes.push(scene);
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.ok)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1175,7 +1383,7 @@ async function handleApi(req, res, url) {
                 bri: d.bri ?? 255,
                 seg: [{ id: 0, fx: d.fx ?? 0, pal: d.pal ?? 0, col: d.col ?? [], sx: d.sx ?? 128, ix: d.ix ?? 128 }],
               });
-          await wled.savePreset(dev.host, slot, name);
+          await savePresetConfirmed(dev, slot, name);
           return { devId, slot, ok: true, reused: typeof existing === 'number' };
         } catch (e) {
           return { devId, slot, ok: false, error: e.message };
@@ -1188,9 +1396,6 @@ async function handleApi(req, res, url) {
     scene.name = name;
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.ok && x.slot != null)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1226,7 +1431,7 @@ async function handleApi(req, res, url) {
       const slot = await nextFreeSlotLive(dev.id);
       if (slot == null) { saved.push({ devId: dev.id, ok: false, error: 'could not read controller for a free slot' }); continue; }
       try {
-        await wled.savePreset(dev.host, slot, name);
+        await savePresetConfirmed(dev, slot, name);
         scene.entries[dev.id] = slot;
         saved.push({ devId: dev.id, slot, created: true, ok: true });
       } catch (e) {
@@ -1244,9 +1449,6 @@ async function handleApi(req, res, url) {
     scene.id = `song-${Date.now().toString(36)}-${scene.id.slice(0, 8)}`;
     await store.save('scenes', state.scenes);
 
-    for (const s of saved.filter((x) => x.created)) {
-      try { state.presets[s.devId] = await wled.getPresets(deviceById(s.devId).host); clearReservations(s.devId); } catch { /* cache stays stale */ }
-    }
     await store.save('presets.cache', state.presets);
 
     return json(res, 200, { scene, saved });
@@ -1528,14 +1730,101 @@ async function handleApi(req, res, url) {
     if (slot == null) return json(res, 409, { error: 'could not read controller for a free slot' });
     invalidateCaptures();
     try {
-      await wled.savePreset(dev.host, slot, label);
-      state.presets[devId] = await wled.getPresets(dev.host);
-      clearReservations(devId);
+      await savePresetConfirmed(dev, slot, label);
       await store.save('presets.cache', state.presets);
       return json(res, 200, { devId, slot, name: label });
     } catch (e) {
       return json(res, 502, { error: e.message });
     }
+  }
+
+  /**
+   * One controller's presets, each with the songs that use it, read live.
+   * The cache can be stale, and this list decides what is safe to delete.
+   */
+  if (method === 'GET' && p.startsWith('/api/preset-usage/')) {
+    const dev = deviceById(decodeURIComponent(p.slice('/api/preset-usage/'.length)));
+    if (!dev) return json(res, 404, { error: 'device missing' });
+    let presets;
+    try { presets = await wled.getPresets(dev.host); } catch (e) {
+      return json(res, 502, { error: `could not read ${dev.name}: ${e.message}` });
+    }
+    state.presets[dev.id] = presets;
+    const usage = presetUsage(dev.id);
+    const list = Object.entries(presets)
+      .map(([id, v]) => {
+        const name = v?.n ?? '';
+        const date = extractDate(name);
+        // "Old" is the library's own cutoff: anything dated before MIN_YEAR, and
+        // bare M/D dates, which carry no year because they predate the habit.
+        // Undated names are never called old -- there is no telling.
+        return { id: Number(id), name, date, old: Boolean(date) && !isRecentDate(date), usedBy: usage.get(Number(id)) ?? [] };
+      })
+      .filter((x) => x.id > 0);
+    return json(res, 200, {
+      devId: dev.id, name: dev.name, storage: state.storage[dev.id] ?? null, minYear: MIN_YEAR, presets: list,
+    });
+  }
+
+  /**
+   * Deletes presets from one controller to free its storage.
+   *
+   * Refuses any preset a song uses, checked here against the live song list
+   * rather than trusting the browser's copy. The controller's whole preset file
+   * is written to data/preset-backups first, since presets are the only copy of
+   * the operator's work. Each deletion is then confirmed by reading back.
+   */
+  if (method === 'POST' && p === '/api/presets/delete') {
+    const { devId, ids } = await readBody(req);
+    const dev = deviceById(devId);
+    if (!dev) return json(res, 404, { error: 'device missing' });
+    const wanted = [...new Set((Array.isArray(ids) ? ids : []).map(Number))].filter((n) => n > 0 && n < 251);
+    if (!wanted.length) return json(res, 400, { error: 'nothing to delete' });
+
+    const usage = presetUsage(dev.id);
+    const inUse = wanted.filter((n) => usage.has(n));
+    if (inUse.length) return json(res, 409, { error: `in use by a song: ${inUse.join(', ')}`, inUse });
+
+    let before;
+    try { before = await wled.getPresets(dev.host); } catch (e) {
+      return json(res, 502, { error: `could not read ${dev.name} to back it up: ${e.message}` });
+    }
+    const backup = path.join(PRESET_BACKUP_DIR, `${dev.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+    try {
+      await mkdir(PRESET_BACKUP_DIR, { recursive: true });
+      await writeFile(backup, JSON.stringify(before, null, 2), 'utf8');
+    } catch (e) {
+      return json(res, 500, { error: `backup failed, nothing deleted: ${e.message}` });
+    }
+
+    invalidateCaptures();
+    // One at a time: these are small controllers, and each deletion rewrites
+    // the whole preset file.
+    for (const n of wanted.filter((x) => before[String(x)])) {
+      try { await wled.deletePreset(dev.host, n); } catch { /* the read-back reports it */ }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    let after = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((r) => setTimeout(r, 300 + attempt * 200));
+      try { after = await wled.getPresets(dev.host); } catch { continue; }
+      if (wanted.every((n) => !after[String(n)])) break;
+    }
+    if (after) {
+      state.presets[dev.id] = after;
+      await store.save('presets.cache', state.presets);
+    }
+    const deleted = after ? wanted.filter((n) => !after[String(n)]) : [];
+    const failed = wanted.filter((n) => !deleted.includes(n));
+    // Re-read storage now rather than on the once-a-minute poll, so the
+    // warning and the percentage reflect the room just made.
+    try {
+      const fs = (await wled.getInfo(dev.host)).fs;
+      if (fs?.t > 0) state.storage[dev.id] = { usedKB: fs.u, totalKB: fs.t };
+    } catch { /* the next poll catches up */ }
+    console.log(`  deleted ${deleted.length} preset(s) from ${dev.id}; backup ${path.basename(backup)}`);
+    return json(res, 200, { deleted, failed, backup: path.relative(process.cwd(), backup) });
   }
 
   if (method === 'POST' && p === '/api/blackout') {
@@ -1651,7 +1940,7 @@ async function handleApi(req, res, url) {
    * Discord is a bonus on top of it.
    */
   if (method === 'POST' && p === '/api/request') {
-    const { kind, detail } = await readBody(req);
+    const { kind, detail, client } = await readBody(req);
     const text = String(detail ?? '').trim();
     if (!text) return json(res, 400, { error: 'say what you need first' });
 
@@ -1664,6 +1953,27 @@ async function handleApi(req, res, url) {
       version,
       posted: null,
     };
+
+    // A fault report carries a snapshot of the rig, taken now while the
+    // problem is (hopefully) still showing. Kept in its own file rather than
+    // in requests.json, which would otherwise balloon with every report.
+    let attachment = null;
+    let summary = '';
+    if (entry.kind === BROKEN_KIND) {
+      try {
+        const diag = await buildDiagnostics(client && typeof client === 'object' ? client : {});
+        const content = JSON.stringify(diag, null, 2);
+        await mkdir(DIAG_DIR, { recursive: true });
+        await writeFile(path.join(DIAG_DIR, `${entry.id}.json`), content, 'utf8');
+        entry.diagnostics = `data/diagnostics/${entry.id}.json`;
+        attachment = { name: `${entry.id}-diagnostics.json`, content };
+        summary = diagnosticsSummary(diag);
+      } catch (e) {
+        // A report must never be lost because the snapshot failed.
+        entry.diagnosticsError = e.message;
+      }
+    }
+    const posted = summary ? `${text}\n\n**Snapshot**\n${summary}` : text;
 
     const log = await store.load('requests', null) ?? [];
     log.unshift(entry);
@@ -1678,7 +1988,7 @@ async function handleApi(req, res, url) {
     }
 
     try {
-      await postToDiscord(cfg.discordWebhook, { kind: entry.kind, detail: text, version });
+      await postToDiscord(cfg.discordWebhook, { kind: entry.kind, detail: posted, version, attachment });
       entry.posted = new Date().toISOString();
       await store.save('requests', log);
       return json(res, 200, { ok: true, saved: true, sent: true });
