@@ -388,6 +388,9 @@ body.beta-mode .version-tag { border-color: var(--warn); color: var(--warn); }
 .update-text strong { display: block; font-weight: 600; }
 .update-text span { color: var(--dim); font-size: 12px; }
 .update-bar.busy { border-color: var(--line); }
+/* Sits at the top so it never covers the update banner along the bottom. */
+.storage-bar { top: 12px; bottom: auto; border-color: var(--warn); }
+.storage-bar .update-dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
 .update-bar.blocked { border-color: #6a5326; }
 
 /* Given its own button rather than being buried in the version number. */

@@ -227,6 +227,8 @@ const state = {
   rigSnapshot: null, // what was on stage when the designer opened, for backing out
   reserved: {},      // devId -> Set of slot numbers claimed but not yet written
   firing: false,     // a scene is mid-flight; the sweep must not talk over it
+  saveFailed: {},    // devId -> why its last preset save never landed
+  storage: {},       // devId -> { usedKB, totalKB } from /json/info
 };
 
 /**
@@ -682,10 +684,15 @@ async function savePresetConfirmed(dev, slot, name) {
     if (presets?.[String(slot)]?.n === name) {
       state.presets[dev.id] = presets;
       clearReservations(dev.id);
+      delete state.saveFailed[dev.id];
       return;
     }
   }
-  throw new Error(`${dev.name} did not store preset ${slot} -- its preset storage may be full`);
+  // Kept until a save to this controller succeeds, so the warning stays on
+  // screen rather than vanishing with the toast.
+  const why = `${dev.name} did not store preset ${slot} -- its preset storage may be full`;
+  state.saveFailed[dev.id] = why;
+  throw new Error(why);
 }
 
 async function pollStatus() {
@@ -702,7 +709,13 @@ async function pollStatus() {
       if (!state.uptimeCheckedAt) state.uptimeCheckedAt = {};
       if ((now - (state.uptimeCheckedAt[dev.id] ?? 0)) > 60000) {
         state.uptimeCheckedAt[dev.id] = now;
-        try { uptime = (await wled.getInfo(dev.host)).uptime ?? uptime; } catch { /* optional */ }
+        try {
+          const info = await wled.getInfo(dev.host);
+          uptime = info.uptime ?? uptime;
+          // Same once-a-minute fetch, so watching storage costs no extra
+          // requests. A full filesystem is what makes preset saves vanish.
+          if (info.fs?.t > 0) state.storage[dev.id] = { usedKB: info.fs.u, totalKB: info.fs.t };
+        } catch { /* optional */ }
       }
       return {
         id: dev.id,
@@ -714,6 +727,8 @@ async function pollStatus() {
         pal: seg.pal,
         colors: seg.col ?? [],
         uptime,
+        storage: state.storage[dev.id] ?? null,
+        saveFailed: state.saveFailed[dev.id] ?? null,
       };
     })
   );

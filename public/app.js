@@ -402,8 +402,48 @@ async function refreshStatus() {
   try {
     S.status = await api('/api/status');
     renderDevices();
+    renderStorageWarning();
   } catch { /* transient network blip; keep the last known state on screen */ }
 }
+
+/**
+ * Warns while any controller cannot be trusted to keep a new song.
+ *
+ * A controller with full preset storage accepts a save and quietly drops it,
+ * so the song plays everywhere except there -- that fixture just stays on its
+ * last look. A toast is gone in seconds, so this stays up until the problem is
+ * cleared, or until dismissed for this particular set of problems.
+ */
+const STORAGE_WARN_AT = 0.9;
+let storageDismissed = '';
+
+function renderStorageWarning() {
+  const issues = [];
+  for (const st of S.status ?? []) {
+    const label = S.devices.find((d) => d.id === st.id)?.name ?? st.id;
+    const fs = st.storage;
+    const pct = fs?.totalKB ? fs.usedKB / fs.totalKB : 0;
+    if (st.saveFailed) issues.push({ id: st.id, text: `${label}: the last song did not save to it` });
+    else if (pct >= STORAGE_WARN_AT) issues.push({ id: st.id, text: `${label}: preset storage ${Math.round(pct * 100)}% full` });
+  }
+  const key = issues.map((i) => i.text).join('|');
+  const bar = $('storageBar');
+  if (!issues.length || key === storageDismissed) return bar.classList.add('hidden');
+
+  $('storageTitle').textContent = issues.length === 1
+    ? `${issues[0].text}`
+    : `Preset storage problems on ${issues.length} controllers`;
+  $('storageNotes').textContent = (issues.length > 1 ? `${issues.map((i) => i.text).join(' · ')}. ` : '')
+    + 'New songs may not stick on it, so it stays on its previous look. '
+    + 'Delete old presets on that controller\'s WLED page, then re-save the affected songs.';
+  bar.dataset.key = key;
+  bar.classList.remove('hidden');
+}
+
+$('storageDismiss').addEventListener('click', () => {
+  storageDismissed = $('storageBar').dataset.key ?? '';
+  $('storageBar').classList.add('hidden');
+});
 
 /* ------------------------------------------------------- auto generator */
 
@@ -2271,6 +2311,7 @@ $('stSave').addEventListener('click', async () => {
     if (!editing && r.scene?.id) ST.editingId = r.scene.id;
 
     await init(false);
+    if (failed.length) refreshStatus(); // raise the storage warning straight away
   } catch (e) {
     toast(e.message, true);
     btn.disabled = false;
