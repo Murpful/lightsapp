@@ -459,6 +459,12 @@ body.beta-mode .updates-fab { border-color: var(--warn); color: var(--warn); }
 .bl-why { font-size: 11px; color: var(--dim); }
 .bl-empty { padding: 24px; text-align: center; color: var(--dim); font-size: 13px; }
 
+.pm-summary { margin: 0; }
+.bl-row.locked .bl-name { color: var(--dim); }
+.bl-row input:disabled { opacity: .35; }
+.dev-presets { margin-left: auto; }
+.dev-presets.warn { color: var(--warn); border-color: var(--warn); }
+
 /* Delete reads red even at rest: it is the one row button you cannot undo. */
 .mini.danger { border-color: #5a2a2a; color: #ff8a8a; }
 .mini.danger:hover { background: #3a1c1c; color: #ffb0b0; border-color: #7a3a3a; }

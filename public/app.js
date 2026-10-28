@@ -112,6 +112,9 @@ setInterval(() => {
 
 /* ------------------------------------------------------------------ render */
 
+/** Storage use at which a controller is flagged as at risk of dropping saves. */
+const STORAGE_WARN_AT = 0.9;
+
 function renderDevices() {
   $('devStrip').innerHTML = S.devices
     .map((d) => {
@@ -135,12 +138,18 @@ function renderDevices() {
       const label = st.ps > 0 ? (p?.name ?? `preset ${st.ps}`) : 'live / unsaved';
       const grad = gradientOf({ col: st.colors });
       const pct = Math.round((st.bri / 255) * 100);
+      const full = st.storage?.totalKB ? st.storage.usedKB / st.storage.totalKB : null;
+      const storageWarn = Boolean(st.saveFailed) || (full ?? 0) >= STORAGE_WARN_AT;
       return `<div class="dev">
         <div class="dev-top">
           <span class="dev-name">${esc(d.name)}</span>
           <span class="dev-meta">${st.on ? `${pct}%` : 'off'}</span>
         </div>
-        <div class="dev-meta">${esc(label)}</div>
+        <div class="dev-top">
+          <span class="dev-meta">${esc(label)}</span>
+          <button class="mini dev-presets${storageWarn ? ' warn' : ''}" data-presets="${esc(d.id)}"
+            title="See and delete this controller's presets">Presets${full != null ? ` · ${Math.round(full * 100)}% full` : ''}</button>
+        </div>
         <div class="dev-bar" style="background:${grad};opacity:${st.on ? 1 : 0.25}"></div>
       </div>`;
     })
@@ -414,7 +423,6 @@ async function refreshStatus() {
  * last look. A toast is gone in seconds, so this stays up until the problem is
  * cleared, or until dismissed for this particular set of problems.
  */
-const STORAGE_WARN_AT = 0.9;
 let storageDismissed = '';
 
 function renderStorageWarning() {
@@ -435,10 +443,105 @@ function renderStorageWarning() {
     : `Preset storage problems on ${issues.length} controllers`;
   $('storageNotes').textContent = (issues.length > 1 ? `${issues.map((i) => i.text).join(' · ')}. ` : '')
     + 'New songs may not stick on it, so it stays on its previous look. '
-    + 'Delete old presets on that controller\'s WLED page, then re-save the affected songs.';
+    + 'Use Free up space to delete presets no song uses, then re-save the affected songs.';
   bar.dataset.key = key;
+  bar.dataset.dev = issues[0].id;
   bar.classList.remove('hidden');
 }
+
+$('storageFree').addEventListener('click', () => openPresets($('storageBar').dataset.dev));
+$('deviceCards').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-presets]');
+  if (btn) openPresets(btn.dataset.presets);
+});
+
+/* ------------------------------------------------------ preset cleanup */
+
+/**
+ * Lets the operator delete presets from one controller to free its storage.
+ *
+ * Only presets no song uses can be ticked; the server re-checks that itself and
+ * backs the controller up before deleting anything.
+ */
+const PM = { devId: null, name: '', presets: [], picked: new Set(), filter: '' };
+
+async function openPresets(devId) {
+  if (!devId) return;
+  PM.devId = devId; PM.picked = new Set(); PM.filter = '';
+  $('pmFilter').value = '';
+  PM.name = S.devices.find((d) => d.id === devId)?.name ?? devId;
+  $('pmTitle').textContent = `Presets on ${PM.name}`;
+  $('pmList').innerHTML = '<div class="bl-empty">Reading the controller&hellip;</div>';
+  $('pmSummary').textContent = '';
+  $('presetPanel').classList.remove('hidden');
+  try {
+    const r = await api(`/api/preset-usage/${encodeURIComponent(devId)}`);
+    PM.presets = r.presets.sort((a, b) => (a.usedBy.length > 0) - (b.usedBy.length > 0) || a.name.localeCompare(b.name));
+    PM.storage = r.storage;
+    renderPresets();
+  } catch (e) {
+    $('pmList').innerHTML = `<div class="bl-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderPresets() {
+  const f = PM.filter.toLowerCase();
+  const rows = PM.presets.filter((p) => !f || p.name.toLowerCase().includes(f) || String(p.id) === f);
+  $('pmList').innerHTML = rows.length ? rows.map((p) => {
+    const locked = p.usedBy.length > 0;
+    const why = locked
+      ? `used by ${p.usedBy.slice(0, 2).map(esc).join(', ')}${p.usedBy.length > 2 ? ` +${p.usedBy.length - 2}` : ''}`
+      : 'not in any song';
+    return `<label class="bl-row${locked ? ' locked' : ''}">
+      <input type="checkbox" data-pm="${p.id}" ${locked ? 'disabled' : ''} ${PM.picked.has(p.id) ? 'checked' : ''} />
+      <span class="bl-name">${esc(p.name || '(unnamed)')} <span class="bl-why">#${p.id}</span></span>
+      <span class="bl-why">${why}</span>
+    </label>`;
+  }).join('') : '<div class="bl-empty">No presets match.</div>';
+
+  const unused = PM.presets.filter((p) => !p.usedBy.length).length;
+  const fs = PM.storage;
+  $('pmSummary').textContent = `${PM.presets.length} presets, ${unused} not in any song`
+    + (fs?.totalKB ? ` · storage ${Math.round((fs.usedKB / fs.totalKB) * 100)}% full` : '');
+  $('pmDelete').disabled = !PM.picked.size;
+  $('pmDelete').textContent = PM.picked.size ? `Delete ${PM.picked.size} selected` : 'Delete selected';
+}
+
+const closePresets = () => $('presetPanel').classList.add('hidden');
+$('pmClose').addEventListener('click', closePresets);
+$('presetPanel').addEventListener('click', (e) => { if (e.target.id === 'presetPanel') closePresets(); });
+$('pmFilter').addEventListener('input', (e) => { PM.filter = e.target.value.trim(); renderPresets(); });
+$('pmList').addEventListener('change', (e) => {
+  const id = Number(e.target.dataset.pm);
+  if (!id) return;
+  if (e.target.checked) PM.picked.add(id); else PM.picked.delete(id);
+  renderPresets();
+});
+$('pmSelectUnused').addEventListener('click', () => {
+  const all = PM.presets.filter((p) => !p.usedBy.length).map((p) => p.id);
+  // A second press clears, so it doubles as "select none".
+  PM.picked = PM.picked.size === all.length ? new Set() : new Set(all);
+  renderPresets();
+});
+$('pmDelete').addEventListener('click', async () => {
+  const n = PM.picked.size;
+  if (!n) return;
+  if (!confirm(`Delete ${n} preset${n === 1 ? '' : 's'} from ${PM.name}?\n\nNo song uses them. A backup of every preset on ${PM.name} is saved first.`)) return;
+  const btn = $('pmDelete');
+  btn.disabled = true; btn.textContent = 'Deleting…';
+  try {
+    const r = await api('/api/presets/delete', { method: 'POST', body: JSON.stringify({ devId: PM.devId, ids: [...PM.picked] }) });
+    toast(r.failed.length
+      ? `Deleted ${r.deleted.length}; ${r.failed.length} did not go — try again`
+      : `Deleted ${r.deleted.length} preset${r.deleted.length === 1 ? '' : 's'} from ${PM.name}`, r.failed.length > 0);
+    await init(false);
+    refreshStatus();
+    await openPresets(PM.devId);
+  } catch (e) {
+    toast(e.message, true);
+    renderPresets();
+  }
+});
 
 $('storageDismiss').addEventListener('click', () => {
   storageDismissed = $('storageBar').dataset.key ?? '';
@@ -1413,7 +1516,8 @@ const anyModalOpen = () =>
   !$('hiddenPanel').classList.contains('hidden') ||
   !$('requestPanel').classList.contains('hidden') ||
   !$('aboutPanel').classList.contains('hidden') ||
-  !$('helpPanel').classList.contains('hidden');
+  !$('helpPanel').classList.contains('hidden') ||
+  !$('presetPanel').classList.contains('hidden');
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
@@ -1422,6 +1526,7 @@ document.addEventListener('keydown', (e) => {
     if (!$('requestPanel').classList.contains('hidden')) return closeRequest();
     if (!$('hiddenPanel').classList.contains('hidden')) return closeHidden();
     if (!$('helpPanel').classList.contains('hidden')) return closeHelp();
+    if (!$('presetPanel').classList.contains('hidden')) return closePresets();
     if (ST.open) return closeStage();
   }
   // Never let a shortcut fire the lights while a dialog or a field has focus.

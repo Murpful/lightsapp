@@ -237,6 +237,7 @@
       <strong id="storageTitle"></strong>
       <span id="storageNotes"></span>
     </div>
+    <button id="storageFree" class="btn primary tiny">Free up space</button>
     <button id="storageDismiss" class="btn ghost tiny">Got it</button>
   </div>
 
@@ -329,6 +330,31 @@
 
       <div id="blList" class="bl-list"></div>
       <p class="modal-note" id="blSummary"></p>
+    </div>
+  </div>
+
+  <div id="presetPanel" class="modal hidden">
+    <div class="modal-card bl-card">
+      <div class="modal-head">
+        <h3 id="pmTitle">Free up space</h3>
+        <button id="pmClose" class="btn ghost tiny">&#10005;</button>
+      </div>
+      <p class="modal-note">Deletes presets from this controller to make room for new
+        songs. Presets a song uses (archived songs included) are locked and cannot be
+        deleted. The controller&rsquo;s full preset list is backed up to
+        <code>data/preset-backups</code> first.</p>
+
+      <div class="bl-controls">
+        <input id="pmFilter" class="search" placeholder="Search&hellip;" />
+        <button id="pmSelectUnused" class="btn ghost tiny">Select all unused</button>
+      </div>
+
+      <div id="pmList" class="bl-list"></div>
+      <div class="modal-foot">
+        <span class="modal-note pm-summary" id="pmSummary"></span>
+        <span class="spacer"></span>
+        <button id="pmDelete" class="btn danger tiny" disabled>Delete selected</button>
+      </div>
     </div>
   </div>
 

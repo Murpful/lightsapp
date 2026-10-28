@@ -12,7 +12,7 @@
 
 import http from 'node:http';
 import https from 'node:https';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import * as wled from './lib/wled.js';
 import * as store from './lib/store.js';
@@ -694,6 +694,28 @@ async function savePresetConfirmed(dev, slot, name) {
   state.saveFailed[dev.id] = why;
   throw new Error(why);
 }
+
+/**
+ * Which songs rely on each preset of one controller.
+ *
+ * Archived songs count: archiving is reversible, and an unarchived song whose
+ * presets had been deleted would fire nothing on that fixture -- exactly the
+ * stuck-fixture symptom this cleanup exists to cure. Mirrors need no special
+ * case: a fixture mirroring this one plays this one's own entry, counted here.
+ */
+function presetUsage(devId) {
+  const usedBy = new Map();
+  for (const scene of state.scenes) {
+    const e = scene.entries?.[devId];
+    if (typeof e !== 'number') continue;
+    if (!usedBy.has(e)) usedBy.set(e, []);
+    usedBy.get(e).push(scene.title ?? scene.name ?? scene.id);
+  }
+  return usedBy;
+}
+
+/** Where a controller's full preset file is kept before the app deletes from it. */
+const PRESET_BACKUP_DIR = path.join(process.cwd(), 'data', 'preset-backups');
 
 async function pollStatus() {
   const results = await Promise.allSettled(
@@ -1569,6 +1591,86 @@ async function handleApi(req, res, url) {
     } catch (e) {
       return json(res, 502, { error: e.message });
     }
+  }
+
+  /**
+   * One controller's presets, each with the songs that use it, read live.
+   * The cache can be stale, and this list decides what is safe to delete.
+   */
+  if (method === 'GET' && p.startsWith('/api/preset-usage/')) {
+    const dev = deviceById(decodeURIComponent(p.slice('/api/preset-usage/'.length)));
+    if (!dev) return json(res, 404, { error: 'device missing' });
+    let presets;
+    try { presets = await wled.getPresets(dev.host); } catch (e) {
+      return json(res, 502, { error: `could not read ${dev.name}: ${e.message}` });
+    }
+    state.presets[dev.id] = presets;
+    const usage = presetUsage(dev.id);
+    const list = Object.entries(presets)
+      .map(([id, v]) => ({ id: Number(id), name: v?.n ?? '', usedBy: usage.get(Number(id)) ?? [] }))
+      .filter((x) => x.id > 0);
+    return json(res, 200, { devId: dev.id, name: dev.name, storage: state.storage[dev.id] ?? null, presets: list });
+  }
+
+  /**
+   * Deletes presets from one controller to free its storage.
+   *
+   * Refuses any preset a song uses, checked here against the live song list
+   * rather than trusting the browser's copy. The controller's whole preset file
+   * is written to data/preset-backups first, since presets are the only copy of
+   * the operator's work. Each deletion is then confirmed by reading back.
+   */
+  if (method === 'POST' && p === '/api/presets/delete') {
+    const { devId, ids } = await readBody(req);
+    const dev = deviceById(devId);
+    if (!dev) return json(res, 404, { error: 'device missing' });
+    const wanted = [...new Set((Array.isArray(ids) ? ids : []).map(Number))].filter((n) => n > 0 && n < 251);
+    if (!wanted.length) return json(res, 400, { error: 'nothing to delete' });
+
+    const usage = presetUsage(dev.id);
+    const inUse = wanted.filter((n) => usage.has(n));
+    if (inUse.length) return json(res, 409, { error: `in use by a song: ${inUse.join(', ')}`, inUse });
+
+    let before;
+    try { before = await wled.getPresets(dev.host); } catch (e) {
+      return json(res, 502, { error: `could not read ${dev.name} to back it up: ${e.message}` });
+    }
+    const backup = path.join(PRESET_BACKUP_DIR, `${dev.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+    try {
+      await mkdir(PRESET_BACKUP_DIR, { recursive: true });
+      await writeFile(backup, JSON.stringify(before, null, 2), 'utf8');
+    } catch (e) {
+      return json(res, 500, { error: `backup failed, nothing deleted: ${e.message}` });
+    }
+
+    invalidateCaptures();
+    // One at a time: these are small controllers, and each deletion rewrites
+    // the whole preset file.
+    for (const n of wanted.filter((x) => before[String(x)])) {
+      try { await wled.deletePreset(dev.host, n); } catch { /* the read-back reports it */ }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    let after = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((r) => setTimeout(r, 300 + attempt * 200));
+      try { after = await wled.getPresets(dev.host); } catch { continue; }
+      if (wanted.every((n) => !after[String(n)])) break;
+    }
+    if (after) {
+      state.presets[dev.id] = after;
+      await store.save('presets.cache', state.presets);
+    }
+    const deleted = after ? wanted.filter((n) => !after[String(n)]) : [];
+    const failed = wanted.filter((n) => !deleted.includes(n));
+    // Re-read storage now rather than on the once-a-minute poll, so the
+    // warning and the percentage reflect the room just made.
+    try {
+      const fs = (await wled.getInfo(dev.host)).fs;
+      if (fs?.t > 0) state.storage[dev.id] = { usedKB: fs.u, totalKB: fs.t };
+    } catch { /* the next poll catches up */ }
+    console.log(`  deleted ${deleted.length} preset(s) from ${dev.id}; backup ${path.basename(backup)}`);
+    return json(res, 200, { deleted, failed, backup: path.relative(process.cwd(), backup) });
   }
 
   if (method === 'POST' && p === '/api/blackout') {
